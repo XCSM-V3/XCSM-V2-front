@@ -1,5 +1,8 @@
 "use client"
 
+
+import { useGranuleContext } from "@/hooks/useGranuleContext"
+
 import { useState, useEffect, useMemo } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { api } from "@/lib/api"
@@ -82,6 +85,73 @@ export default function CourseViewerPage() {
     // --- NOUVEAU: Gestion du mode "Collection" (Vue Chapitre complet) ---
     const [activeCollection, setActiveCollection] = useState<{ title: string, granules: Granule[] } | null>(null)
 
+
+
+    // Liste plate des granulés pour la navigation (Précédent/Suivant)
+    const flatGranules = useMemo(() => {
+        if (!structure) return []
+        const granules: Granule[] = []
+        structure.parties.forEach(p => {
+            p.chapitres.forEach(c => {
+                c.sections.forEach(s => {
+                    s.sous_sections.forEach(ss => {
+                        granules.push(...ss.granules)
+                    })
+                })
+            })
+        })
+        return granules
+    }, [structure])
+
+
+
+   const currentIndex = flatGranules.findIndex(g => g.id === selectedGranuleId)
+   const currentGranule = flatGranules[currentIndex]
+
+
+    // Alimente l'agent IA avec le granule affiché
+    useGranuleContext(
+    structure && currentGranule
+        ? {
+            courseId: structure.cours.id,
+            courseTitle: structure.cours.titre,
+            notionTitle: currentGranule.titre,
+            notionContent: currentGranule.contenu?.html_content ?? "",
+            level: "notion",
+        }
+        : {
+            courseId: (id as string) ?? "",
+            courseTitle: structure?.cours.titre ?? "Cours",
+            level: "cours",
+        }
+    );
+
+
+
+
+
+
+    // useGranuleContext(
+    // structure && currentGranule
+    //     ? {
+    //         courseId: structure.cours.id,
+    //         courseTitle: structure.cours.titre,
+    //         // Remonter le chemin hiérarchique si disponible
+    //         chapterTitle: findChapterOfGranule(structure, currentGranule.id)?.titre,
+    //         notionTitle: currentGranule.titre,
+    //         notionContent: currentGranule.contenu?.html_content || "",
+    //         level: "notion",
+    //     }
+    //     : {
+    //         courseId: id as string,
+    //         courseTitle: structure?.cours.titre || "Cours",
+    //         level: "cours",
+    //     }
+    // );
+
+
+
+
     useEffect(() => {
         const fetchContent = async () => {
             try {
@@ -107,24 +177,9 @@ export default function CourseViewerPage() {
         if (id) fetchContent()
     }, [id])
 
-    // Liste plate des granulés pour la navigation (Précédent/Suivant)
-    const flatGranules = useMemo(() => {
-        if (!structure) return []
-        const granules: Granule[] = []
-        structure.parties.forEach(p => {
-            p.chapitres.forEach(c => {
-                c.sections.forEach(s => {
-                    s.sous_sections.forEach(ss => {
-                        granules.push(...ss.granules)
-                    })
-                })
-            })
-        })
-        return granules
-    }, [structure])
 
-    const currentIndex = flatGranules.findIndex(g => g.id === selectedGranuleId)
-    const currentGranule = flatGranules[currentIndex]
+
+
 
     const goToNext = () => {
         if (currentIndex < flatGranules.length - 1) {

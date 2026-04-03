@@ -38,6 +38,7 @@ export interface Course {
   date_creation: string
   est_inscrit?: boolean
   est_proprietaire?: boolean
+  image  :"png" | "jpg" | "jpeg" | null
   progress?: number
   last_accessed?: string
 }

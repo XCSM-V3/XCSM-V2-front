@@ -2,6 +2,7 @@
 
 
 import { useGranuleContext } from "@/hooks/useGranuleContext"
+import { useAnalytics } from "@/hooks/useAnalytics"  // ← NOUVEAU
 
 import { useState, useEffect, useMemo } from "react"
 import { useParams, useRouter } from "next/navigation"
@@ -105,51 +106,56 @@ export default function CourseViewerPage() {
 
 
 
-   const currentIndex = flatGranules.findIndex(g => g.id === selectedGranuleId)
-   const currentGranule = flatGranules[currentIndex]
+    const currentIndex = flatGranules.findIndex(g => g.id === selectedGranuleId)
+    const currentGranule = flatGranules[currentIndex]
 
 
-    // Alimente l'agent IA avec le granule affiché
+    // ── NOUVEAU : Analytics tracking ─────────────────────────────
+    const { trackAIQuestion } = useAnalytics({
+        course_id: id as string,
+        granule_id: currentGranule?.id,
+        granule_title: currentGranule?.titre,
+    })
+
+    // ── NOUVEAU : Context pour l'agent IA ─────────────────────────────
+    // On utilise le contexte pour fournir au chat les infos du chapitre/cours
+    // sans avoir à les passer manuellement à chaque fois
     useGranuleContext(
-    structure && currentGranule
-        ? {
-            courseId: structure.cours.id,
-            courseTitle: structure.cours.titre,
-            notionTitle: currentGranule.titre,
-            notionContent: currentGranule.contenu?.html_content ?? "",
-            level: "notion",
-        }
-        : {
-            courseId: (id as string) ?? "",
-            courseTitle: structure?.cours.titre ?? "Cours",
-            level: "cours",
-        }
+        structure && currentGranule
+            ? {
+                courseId: structure.cours.id,
+                courseTitle: structure.cours.titre,
+                notionTitle: currentGranule.titre,
+                notionContent: currentGranule.contenu?.html_content ?? "",
+                level: "notion",
+            }
+            : {
+                courseId: (id as string) ?? "",
+                courseTitle: structure?.cours.titre ?? "Cours",
+                level: "cours",
+            }
     );
 
 
 
 
 
-
-    // useGranuleContext(
-    // structure && currentGranule
-    //     ? {
-    //         courseId: structure.cours.id,
-    //         courseTitle: structure.cours.titre,
-    //         // Remonter le chemin hiérarchique si disponible
-    //         chapterTitle: findChapterOfGranule(structure, currentGranule.id)?.titre,
-    //         notionTitle: currentGranule.titre,
-    //         notionContent: currentGranule.contenu?.html_content || "",
-    //         level: "notion",
-    //     }
-    //     : {
-    //         courseId: id as string,
-    //         courseTitle: structure?.cours.titre || "Cours",
-    //         level: "cours",
-    //     }
-    // );
-
-
+    // Alimente l'agent IA avec le granule affiché
+    useGranuleContext(
+        structure && currentGranule
+            ? {
+                courseId: structure.cours.id,
+                courseTitle: structure.cours.titre,
+                notionTitle: currentGranule.titre,
+                notionContent: currentGranule.contenu?.html_content ?? "",
+                level: "notion",
+            }
+            : {
+                courseId: (id as string) ?? "",
+                courseTitle: structure?.cours.titre ?? "Cours",
+                level: "cours",
+            }
+    );
 
 
     useEffect(() => {
@@ -185,9 +191,13 @@ export default function CourseViewerPage() {
         if (currentIndex < flatGranules.length - 1) {
             const nextId = flatGranules[currentIndex + 1].id
             setSelectedGranuleId(nextId)
-            setActiveCollection(null) // Reset mode collection
+            setActiveCollection(null)
+            // Le hook useAnalytics détecte automatiquement le changement
+            // et envoie granule_view_end pour le précédent + granule_view_start pour le suivant
         }
     }
+
+
 
     const goToPrev = () => {
         if (currentIndex > 0) {

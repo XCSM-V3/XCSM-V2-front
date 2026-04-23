@@ -27,6 +27,13 @@
       "email": "zidane@gmail.com",
       "password": "zidane",
       "role": "student"
+    },
+    {
+      "id": "user-5",
+      "name": "Prof Demo",
+      "email": "prof@demo.com",
+      "password": "prof1234",
+      "role": "teacher"
     }
   ]
 }

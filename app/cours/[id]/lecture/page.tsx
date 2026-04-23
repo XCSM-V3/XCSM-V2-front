@@ -1,6 +1,9 @@
 "use client"
 
 
+import CommentsPanel from "@/components/comments/CommentsPanel"
+import NotificationsBell from "@/components/comments/NotificationsBell"
+
 import { useGranuleContext } from "@/hooks/useGranuleContext"
 import { useAnalytics } from "@/hooks/useAnalytics"  // ← NOUVEAU
 
@@ -18,7 +21,8 @@ import {
     FileText,
     CheckCircle2,
     PlayCircle,
-    Loader2
+    Loader2,
+    MessageSquare
 } from "lucide-react"
 import { toast } from "@/components/ui/use-toast"
 import { cn } from "@/lib/utils"
@@ -83,8 +87,11 @@ export default function CourseViewerPage() {
     const [selectedGranuleId, setSelectedGranuleId] = useState<string | null>(null)
     const [isSidebarOpen, setIsSidebarOpen] = useState(true)
 
+
     // --- NOUVEAU: Gestion du mode "Collection" (Vue Chapitre complet) ---
     const [activeCollection, setActiveCollection] = useState<{ title: string, granules: Granule[] } | null>(null)
+
+    const [showComments, setShowComments] = useState(false)
 
 
 
@@ -421,6 +428,20 @@ export default function CourseViewerPage() {
                         <Button variant="ghost" size="sm" onClick={() => router.push(`/cours/${id}`)}>
                             Quitter
                         </Button>
+
+                        {/* Cloche notifications — visible pour tous les connectés */}
+                        <NotificationsBell />
+
+                        {/* Bouton Discussions */}
+                        <Button
+                            variant={showComments ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setShowComments(!showComments)}
+                            className={showComments ? "bg-primary text-primary-foreground" : ""}
+                        >
+                            <MessageSquare className="h-4 w-4 mr-1.5" />
+                            <span className="hidden sm:inline">Discussions</span>
+                        </Button>
                     </div>
                 </header>
 
@@ -502,6 +523,34 @@ export default function CourseViewerPage() {
                             <ChevronRight className="h-4 w-4" />
                         </Button>
                     </footer>
+                )}
+
+                {/* Panneau Discussions latéral — conditionnel */}
+                {showComments && currentGranule && (
+                    <div className="w-80 xl:w-96 border-l border-border flex flex-col bg-background flex-shrink-0">
+                        {/* Header panneau */}
+                        <div className="px-4 py-3 border-b border-border flex items-center justify-between flex-shrink-0">
+                            <span className="text-sm font-semibold text-foreground">
+                                Discussions
+                            </span>
+                            <button
+                                onClick={() => setShowComments(false)}
+                                className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                            >
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                                    <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                                </svg>
+                            </button>
+                        </div>
+                        {/* CommentsPanel */}
+                        <div className="flex-1 overflow-y-auto p-4">
+                            <CommentsPanel
+                                granuleId={currentGranule.id}
+                                courseId={id as string}
+                                compact={true}
+                            />
+                        </div>
+                    </div>
                 )}
             </div>
         </div>

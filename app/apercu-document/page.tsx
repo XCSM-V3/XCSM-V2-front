@@ -24,7 +24,7 @@ export default function DocumentPreviewPage() {
   }, [])
 
   const handleEdit = () => {
-    router.push("/dashboard/editeur?imported=true")
+    router.push("/dashboard")
   }
 
   const handlePreview = () => {
@@ -42,13 +42,13 @@ export default function DocumentPreviewPage() {
 
   if (!documentPreview) {
     return (
-      <div className="flex flex-col min-h-screen bg-gray-50">
+      <div className="flex flex-col min-h-screen bg-background">
         <div className="container mx-auto px-4 py-12">
           <Card className="max-w-3xl mx-auto p-6 text-center border-green-100">
             <h1 className="text-2xl font-bold text-red-600 mb-4">Erreur</h1>
             <p className="mb-6">Aucun document n'a été importé ou une erreur s'est produite.</p>
-            <Button onClick={() => router.push("/importer-document")} className="bg-green-600 hover:bg-green-700">
-              Réessayer
+            <Button onClick={() => router.push("/dashboard")} className="bg-green-600 hover:bg-green-700">
+              Retour au dashboard
             </Button>
           </Card>
         </div>
@@ -57,7 +57,7 @@ export default function DocumentPreviewPage() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-50">
+    <div className="flex flex-col min-h-screen bg-background">
       <div className="container mx-auto px-4 py-12">
         <div className="max-w-3xl mx-auto">
           <h1 className="text-3xl font-bold text-gray-800 mb-8 text-center">Aperçu du document</h1>

@@ -54,17 +54,17 @@ export function RegisterForm() {
   }
 
   return (
-    <Card className="w-full max-w-md shadow-xl border-t-4 border-green-600 bg-white/95 backdrop-blur-sm">
+    <Card className="w-full max-w-md shadow-xl border-t-4 border-green-600 bg-card/95 backdrop-blur-sm">
       <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl font-bold text-center tracking-tight text-gray-900">Inscription</CardTitle>
-        <CardDescription className="text-center text-gray-500">
+        <CardTitle className="text-2xl font-bold text-center tracking-tight">Inscription</CardTitle>
+        <CardDescription className="text-center">
           Créer un nouveau compte XCSM
         </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
-            <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-3 rounded-r text-sm font-medium animate-in fade-in slide-in-from-top-2">
+            <div className="bg-red-500/10 border-l-4 border-red-500 text-red-600 dark:text-red-400 p-3 rounded-r text-sm font-medium animate-in fade-in slide-in-from-top-2">
               {error}
             </div>
           )}
@@ -73,7 +73,7 @@ export function RegisterForm() {
             <div className="space-y-2">
               <Label htmlFor="prenom">Prénom</Label>
               <div className="relative">
-                <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="prenom"
                   placeholder="Rouchda"
@@ -88,7 +88,7 @@ export function RegisterForm() {
             <div className="space-y-2">
               <Label htmlFor="nom">Nom</Label>
               <div className="relative">
-                <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="nom"
                   placeholder="Yampen"
@@ -105,7 +105,7 @@ export function RegisterForm() {
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <div className="relative">
-              <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+              <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
                 id="email"
                 type="email"
@@ -123,7 +123,7 @@ export function RegisterForm() {
             <Label htmlFor="role">Rôle</Label>
             <div className="relative">
               {/* Icon wrapper styling hack for Select */}
-              <GraduationCap className="absolute left-3 top-3 h-4 w-4 text-gray-400 z-10 pointer-events-none" />
+              <GraduationCap className="absolute left-3 top-3 h-4 w-4 text-muted-foreground z-10 pointer-events-none" />
               <Select
                 value={formData.role}
                 onValueChange={(value: "etudiant" | "enseignant") =>
@@ -145,7 +145,7 @@ export function RegisterForm() {
           <div className="space-y-2">
             <Label htmlFor="password">Mot de passe</Label>
             <div className="relative">
-              <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+              <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
                 id="password"
                 type={showPassword ? "text" : "password"}
@@ -159,7 +159,7 @@ export function RegisterForm() {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-3 text-gray-400 hover:text-gray-600 focus:outline-none"
+                className="absolute right-3 top-3 text-muted-foreground hover:text-foreground focus:outline-none"
               >
                 {showPassword ? (
                   <EyeOff className="h-4 w-4" />
@@ -173,7 +173,7 @@ export function RegisterForm() {
           <div className="space-y-2">
             <Label htmlFor="password2">Confirmer le mot de passe</Label>
             <div className="relative">
-              <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+              <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
                 id="password2"
                 type={showPassword2 ? "text" : "password"}
@@ -187,7 +187,7 @@ export function RegisterForm() {
               <button
                 type="button"
                 onClick={() => setShowPassword2(!showPassword2)}
-                className="absolute right-3 top-3 text-gray-400 hover:text-gray-600 focus:outline-none"
+                className="absolute right-3 top-3 text-muted-foreground hover:text-foreground focus:outline-none"
               >
                 {showPassword2 ? (
                   <EyeOff className="h-4 w-4" />
@@ -218,12 +218,12 @@ export function RegisterForm() {
               <span className="w-full border-t" />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-white px-2 text-gray-500">Ou</span>
+              <span className="bg-card px-2 text-muted-foreground">Ou</span>
             </div>
           </div>
 
           <div className="text-center text-sm">
-            <span className="text-gray-600">Déjà un compte ? </span>
+            <span className="text-muted-foreground">Déjà un compte ? </span>
             <Link href="/login" className="text-green-600 hover:text-green-700 font-semibold hover:underline">
               Se connecter
             </Link>

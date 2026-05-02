@@ -55,7 +55,7 @@ export default function CreateCoursePage() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-50">
+    <div className="flex flex-col min-h-screen bg-background">
       <SiteHeader />
 
       <main className="flex-1 container mx-auto px-4 py-8">
@@ -73,10 +73,10 @@ export default function CreateCoursePage() {
 
         {/* Titre principal */}
         <div className="mb-8 text-center">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">
+          <h1 className="text-4xl font-bold mb-2">
             Créer un nouveau cours
           </h1>
-          <p className="text-lg text-gray-600">
+          <p className="text-lg text-muted-foreground">
             Remplissez les informations pour créer votre cours
           </p>
         </div>
@@ -125,7 +125,7 @@ export default function CreateCoursePage() {
                   disabled={isLoading}
                   className="text-base"
                 />
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-muted-foreground">
                   Le titre doit être clair et descriptif
                 </p>
               </div>
@@ -134,7 +134,7 @@ export default function CreateCoursePage() {
               <div className="space-y-2">
                 <Label htmlFor="code" className="text-base font-medium">
                   Code du cours{" "}
-                  <span className="text-gray-500 font-normal">(optionnel)</span>
+                  <span className="text-muted-foreground font-normal">(optionnel)</span>
                 </Label>
                 <Input
                   id="code"
@@ -147,7 +147,7 @@ export default function CreateCoursePage() {
                   className="text-base"
                   maxLength={20}
                 />
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-muted-foreground">
                   Laissez vide pour générer automatiquement un code unique
                 </p>
               </div>
@@ -221,12 +221,12 @@ export default function CreateCoursePage() {
 
         {/* Section aide */}
         <div className="max-w-3xl mx-auto mt-8">
-          <Card className="bg-gray-50 border-gray-200">
+          <Card className="bg-muted/30 border-border">
             <CardContent className="pt-6">
-              <h3 className="font-semibold text-gray-900 mb-3">
+              <h3 className="font-semibold mb-3">
                 💡 Conseils pour un bon cours
               </h3>
-              <ul className="space-y-2 text-sm text-gray-700">
+              <ul className="space-y-2 text-sm text-muted-foreground">
                 <li className="flex gap-2">
                   <span className="text-green-600 font-bold">✓</span>
                   <span>

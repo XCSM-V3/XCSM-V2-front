@@ -11,12 +11,12 @@ export default function ContactPage() {
     <div className="flex min-h-screen flex-col">
       <SiteHeader />
       <main className="flex-1">
-        <section className="w-full py-12 md:py-24 lg:py-32 bg-white">
+        <section className="w-full py-12 md:py-24 lg:py-32 bg-background">
           <div className="container px-4 md:px-6">
             <div className="flex flex-col items-center justify-center space-y-4 text-center mb-12">
               <div className="space-y-2">
                 <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">Contactez-nous</h1>
-                <p className="text-gray-500 md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
+                <p className="text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
                   Nous sommes là pour répondre à vos questions et vous aider
                 </p>
               </div>
@@ -26,7 +26,7 @@ export default function ContactPage() {
               <div className="space-y-6">
                 <div className="space-y-2">
                   <h2 className="text-2xl font-bold">Envoyez-nous un message</h2>
-                  <p className="text-gray-500">
+                  <p className="text-muted-foreground">
                     Remplissez le formulaire ci-dessous et nous vous répondrons dans les plus brefs délais.
                   </p>
                 </div>
@@ -67,7 +67,7 @@ export default function ContactPage() {
               <div className="space-y-6">
                 <div className="space-y-2">
                   <h2 className="text-2xl font-bold">Nos coordonnées</h2>
-                  <p className="text-gray-500">
+                  <p className="text-muted-foreground">
                     Vous préférez nous contacter directement ? Utilisez les informations ci-dessous.
                   </p>
                 </div>
@@ -77,7 +77,7 @@ export default function ContactPage() {
                     <Mail className="h-6 w-6 text-green-600 mt-0.5" />
                     <div>
                       <h3 className="font-medium">Email</h3>
-                      <p className="text-sm text-gray-500">contact@xcsm.com</p>
+                      <p className="text-sm text-muted-foreground">contact@xcsm.com</p>
                     </div>
                   </div>
 
@@ -85,7 +85,7 @@ export default function ContactPage() {
                     <Phone className="h-6 w-6 text-green-600 mt-0.5" />
                     <div>
                       <h3 className="font-medium">Téléphone</h3>
-                      <p className="text-sm text-gray-500">+237 6 72 92 08 24</p>
+                      <p className="text-sm text-muted-foreground">+237 6 72 92 08 24</p>
                     </div>
                   </div>
 
@@ -93,8 +93,8 @@ export default function ContactPage() {
                     <MapPin className="h-6 w-6 text-green-600 mt-0.5" />
                     <div>
                       <h3 className="font-medium">Adresse</h3>
-                      <p className="text-sm text-gray-500">  Rue 3.390 Melen, Yaoundé.</p>
-                      <p className="text-sm text-gray-500">Yaoundé, Cameroun</p>
+                      <p className="text-sm text-muted-foreground">  Rue 3.390 Melen, Yaoundé.</p>
+                      <p className="text-sm text-muted-foreground">Yaoundé, Cameroun</p>
                     </div>
                   </div>
                 </div>

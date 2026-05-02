@@ -25,7 +25,7 @@ export default function PreviewPage() {
   }, [])
 
   const handleEdit = () => {
-    router.push("/dashboard/editeur?imported=true")
+    router.push("/dashboard")
   }
 
   const handleBack = () => {
@@ -34,7 +34,7 @@ export default function PreviewPage() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col min-h-screen bg-gray-50 items-center justify-center">
+      <div className="flex flex-col min-h-screen bg-background items-center justify-center">
         <Loader2 className="h-12 w-12 animate-spin text-green-600" />
         <p className="mt-4 text-lg">Chargement de la prévisualisation...</p>
       </div>
@@ -43,13 +43,13 @@ export default function PreviewPage() {
 
   if (!document) {
     return (
-      <div className="flex flex-col min-h-screen bg-gray-50">
+      <div className="flex flex-col min-h-screen bg-background">
         <div className="container mx-auto px-4 py-12">
           <Card className="max-w-3xl mx-auto p-6 text-center border-green-100">
             <h1 className="text-2xl font-bold text-red-600 mb-4">Erreur</h1>
             <p className="mb-6">Aucun document n'a été importé ou une erreur s'est produite.</p>
-            <Button onClick={() => router.push("/importer-document")} className="bg-green-600 hover:bg-green-700">
-              Réessayer
+            <Button onClick={() => router.push("/dashboard")} className="bg-green-600 hover:bg-green-700">
+              Retour au dashboard
             </Button>
           </Card>
         </div>
@@ -60,7 +60,7 @@ export default function PreviewPage() {
 
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-50">
+    <div className="flex flex-col min-h-screen bg-background">
       <div className="container mx-auto px-4 py-12">
         <div className="max-w-3xl mx-auto">
           <div className="flex items-center justify-between mb-8">
@@ -86,14 +86,14 @@ export default function PreviewPage() {
                 document.chapters.map((chapter: any, index: number) => (
                   <div key={index} className="mb-8">
                     <h2 className="text-2xl font-semibold mb-4">{chapter.title}</h2>
-                    <div className="text-gray-700 whitespace-pre-line">{chapter.content}</div>
+                    <div className="text-foreground whitespace-pre-line">{chapter.content}</div>
 
 
                   </div>
                 ))}
 
               {(!document.chapters || document.chapters.length === 0) && (
-                <p className="text-gray-500 italic">Aucun contenu disponible pour la prévisualisation.</p>
+                <p className="text-muted-foreground italic">Aucun contenu disponible pour la prévisualisation.</p>
               )}
             </div>
           </Card>

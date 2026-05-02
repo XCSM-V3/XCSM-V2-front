@@ -14,16 +14,13 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import {
   LayoutDashboard,
-  FileEdit,
   Settings,
   PlusCircle,
   ChevronLeft,
-  FileText,
-  Brain,
   LogOut,
   School,
   BarChart3,
-  MessageSquare,   // ← AJOUT Commentaires
+  MessageSquare,
 } from "lucide-react"
 
 export function MainSidebar() {
@@ -45,43 +42,22 @@ export function MainSidebar() {
       icon: LayoutDashboard,
     },
     {
-      title: "Nouvel éditeur",
-      href: "/dashboard/editeur",
-      icon: FileEdit,
-      roles: ["enseignant", "admin"],
-    },
-    {
       title: "Mes Matières",
       href: "/dashboard/matieres",
       icon: School,
     },
-    {
-      title: "Mes Documents",
-      href: "/dashboard/documents",
-      icon: FileText,
-      roles: ["enseignant", "admin"],
-    },
-    {
-      title: "Importer et Traiter",
-      href: "/importer-document",
-      icon: Brain,
-      roles: ["enseignant", "admin"],
-    },
-    // ── AJOUT : Analytics ──────────────────────────────────────
     {
       title: "Analytics",
       href: "/dashboard/analytics",
       icon: BarChart3,
       roles: ["enseignant", "admin"],
     },
-    // ── AJOUT : Commentaires & Collaboration ───────────────────
     {
       title: "Commentaires",
       href: "/dashboard/commentaires",
       icon: MessageSquare,
       roles: ["enseignant", "admin"],
     },
-    // ──────────────────────────────────────────────────────────
     {
       title: "Paramètres",
       href: "/dashboard/parametres",

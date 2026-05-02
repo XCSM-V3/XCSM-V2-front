@@ -35,10 +35,10 @@ export function LoginForm() {
   }
 
   return (
-    <Card className="w-full max-w-md shadow-xl border-t-4 border-green-600 bg-white/95 backdrop-blur-sm">
+    <Card className="w-full max-w-md shadow-xl border-t-4 border-green-600 bg-card/95 backdrop-blur-sm">
       <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl font-bold text-center tracking-tight text-gray-900">Connexion</CardTitle>
-        <CardDescription className="text-center text-gray-500">
+        <CardTitle className="text-2xl font-bold text-center tracking-tight">Connexion</CardTitle>
+        <CardDescription className="text-center">
           Entrez vos identifiants pour accéder à XCSM
         </CardDescription>
       </CardHeader>
@@ -53,12 +53,12 @@ export function LoginForm() {
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <div className="relative">
-              <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+              <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
                 id="email"
                 type="email"
                 placeholder="rouchda.yampen@exemple.com"
-                className="pl-9 border-gray-200 focus:border-green-500 focus:ring-green-500"
+                className="pl-9 focus:border-green-500 focus:ring-green-500"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -70,12 +70,12 @@ export function LoginForm() {
           <div className="space-y-2">
             <Label htmlFor="password">Mot de passe</Label>
             <div className="relative">
-              <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+              <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
                 id="password"
                 type={showPassword ? "text" : "password"}
                 placeholder="Votre mot de passe"
-                className="pl-9 pr-10 border-gray-200 focus:border-green-500 focus:ring-green-500"
+                className="pl-9 pr-10 focus:border-green-500 focus:ring-green-500"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
@@ -84,7 +84,7 @@ export function LoginForm() {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-3 text-gray-400 hover:text-gray-600 focus:outline-none"
+                className="absolute right-3 top-3 text-muted-foreground hover:text-foreground focus:outline-none"
               >
                 {showPassword ? (
                   <EyeOff className="h-4 w-4" />
@@ -115,12 +115,12 @@ export function LoginForm() {
               <span className="w-full border-t" />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-white px-2 text-gray-500">Ou</span>
+              <span className="bg-card px-2 text-muted-foreground">Ou</span>
             </div>
           </div>
 
           <div className="text-center text-sm">
-            <span className="text-gray-600">Vous n'avez pas de compte ? </span>
+            <span className="text-muted-foreground">Vous n'avez pas de compte ? </span>
             <Link href="/inscription" className="text-green-600 hover:text-green-700 font-semibold hover:underline">
               S'inscrire maintenant
             </Link>

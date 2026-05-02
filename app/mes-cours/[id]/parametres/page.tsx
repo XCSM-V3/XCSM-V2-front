@@ -64,7 +64,7 @@ export default function CourseSettingsPage() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col min-h-screen bg-gray-50">
+      <div className="flex flex-col min-h-screen bg-background">
         <div className="container mx-auto px-4 py-8">
           <div className="flex items-center gap-2 mb-6">
             <Button variant="ghost" size="icon" onClick={() => router.back()}>
@@ -78,7 +78,7 @@ export default function CourseSettingsPage() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-50">
+    <div className="flex flex-col min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
         <div className="flex items-center gap-2 mb-6">
           <Button variant="ghost" size="icon" onClick={() => router.back()}>
@@ -222,7 +222,7 @@ export default function CourseSettingsPage() {
                       onCheckedChange={(checked) => setCourse({ ...course, allowDownloads: checked })}
                     />
                   </div>
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-muted-foreground">
                     Permet aux élèves de télécharger les ressources attachées au cours.
                   </p>
                 </div>
@@ -236,7 +236,7 @@ export default function CourseSettingsPage() {
                       onCheckedChange={(checked) => setCourse({ ...course, allowComments: checked })}
                     />
                   </div>
-                  <p className="text-sm text-gray-500">Permet aux élèves de laisser des commentaires sur le cours.</p>
+                  <p className="text-sm text-muted-foreground">Permet aux élèves de laisser des commentaires sur le cours.</p>
                 </div>
 
                 <Button onClick={handleSaveSettings}>
@@ -263,7 +263,7 @@ export default function CourseSettingsPage() {
                       onCheckedChange={(checked) => setCourse({ ...course, showTableOfContents: checked })}
                     />
                   </div>
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-muted-foreground">
                     Affiche une table des matières dans la barre latérale pour faciliter la navigation.
                   </p>
                 </div>
@@ -277,7 +277,7 @@ export default function CourseSettingsPage() {
                       onCheckedChange={(checked) => setCourse({ ...course, allowPrinting: checked })}
                     />
                   </div>
-                  <p className="text-sm text-gray-500">Permet aux élèves d'imprimer le contenu du cours.</p>
+                  <p className="text-sm text-muted-foreground">Permet aux élèves d'imprimer le contenu du cours.</p>
                 </div>
 
                 <Button onClick={handleSaveSettings}>

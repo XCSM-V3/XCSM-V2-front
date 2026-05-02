@@ -249,7 +249,7 @@ export default function ContentViewPage() {
                 <CardContent>
                     {content.granules.length === 0 ? (
                         <div className="text-center py-12">
-                            <FileText className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                            <FileText className="h-16 w-16 text-muted-foreground/50 mx-auto mb-4" />
                             <p className="text-muted-foreground">
                                 Aucun contenu disponible
                             </p>
@@ -257,7 +257,7 @@ export default function ContentViewPage() {
                     ) : (
                         <div className="prose prose-lg max-w-none">
                             {/* Affichage en mode lecture continue */}
-                            <div className="bg-white rounded-lg p-8 border border-gray-200 leading-relaxed text-justify">
+                            <div className="bg-card rounded-lg p-8 border border-border leading-relaxed text-justify">
                                 {content.granules.map((granule, index) => (
                                     <div key={granule.id}>
                                         {/* Afficher le titre de la partie si nouveau */}
@@ -272,7 +272,7 @@ export default function ContentViewPage() {
                                         {/* Afficher le titre du chapitre si nouveau */}
                                         {granule.hierarchie?.nouveau_chapitre && (
                                             <div className="mb-6 mt-10">
-                                                <h2 className="text-3xl font-bold text-gray-800 border-b-2 border-gray-300 pb-2 mb-4">
+                                                <h2 className="text-3xl font-bold text-foreground border-b-2 border-border pb-2 mb-4">
                                                     {granule.hierarchie.chapitre}
                                                 </h2>
                                             </div>
@@ -281,7 +281,7 @@ export default function ContentViewPage() {
                                         {/* Afficher le titre de la section si nouveau */}
                                         {granule.hierarchie?.nouvelle_section && (
                                             <div className="mb-4 mt-8">
-                                                <h3 className="text-2xl font-semibold text-gray-700 mb-3">
+                                                <h3 className="text-2xl font-semibold text-foreground mb-3">
                                                     {granule.hierarchie.section}
                                                 </h3>
                                             </div>
@@ -290,7 +290,7 @@ export default function ContentViewPage() {
                                         {/* Afficher le titre de la sous-section si nouveau */}
                                         {granule.hierarchie?.nouvelle_sous_section && (
                                             <div className="mb-3 mt-6">
-                                                <h4 className="text-xl font-medium text-gray-600 mb-2">
+                                                <h4 className="text-xl font-medium text-muted-foreground mb-2">
                                                     {granule.hierarchie.sous_section}
                                                 </h4>
                                             </div>
@@ -299,7 +299,7 @@ export default function ContentViewPage() {
                                         {/* Contenu du granule */}
                                         {granule.contenu?.content && (
                                             <div className={granule.type_contenu === 'TEXTE' ? "mb-4 last:mb-0" : "mb-8 last:mb-0"}>
-                                                <p className="text-gray-900 whitespace-pre-line leading-relaxed text-lg">
+                                                <p className="text-foreground whitespace-pre-line leading-relaxed text-lg">
                                                     {granule.contenu.content}
                                                 </p>
                                             </div>

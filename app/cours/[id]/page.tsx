@@ -10,6 +10,17 @@ import { Badge } from "@/components/ui/badge"
 import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import {
   ChevronLeft,
   BookOpen,
   Users,
@@ -86,7 +97,6 @@ export default function CourseDetailPage() {
   }
 
   const handleUnenroll = async () => {
-    if (!confirm("Êtes-vous sûr de vouloir vous désinscrire ?")) return
 
     try {
       await api.unenrollFromCourse(courseId)
@@ -125,7 +135,7 @@ export default function CourseDetailPage() {
             <CardContent className="text-center py-12">
               <XCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
               <h2 className="text-2xl font-bold mb-2">Cours introuvable</h2>
-              <p className="text-gray-600 mb-6">
+              <p className="text-muted-foreground mb-6">
                 Le cours que vous recherchez n'existe pas ou a été supprimé.
               </p>
               <Button onClick={() => router.push("/cours")}>
@@ -140,7 +150,7 @@ export default function CourseDetailPage() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-50">
+    <div className="flex flex-col min-h-screen bg-background">
       <SiteHeader />
 
       <main className="flex-1 container mx-auto px-4 py-8">
@@ -220,13 +230,33 @@ export default function CourseDetailPage() {
                       <PlayCircle className="h-4 w-4 mr-2" />
                       Commencer la lecture
                     </Button>
-                    <Button
-                      variant="outline"
-                      className="border-red-300 text-red-700 hover:bg-red-50"
-                      onClick={handleUnenroll}
-                    >
-                      Se désinscrire
-                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className="border-red-300 text-red-600 dark:text-red-400 hover:bg-red-500/10"
+                        >
+                          Se désinscrire
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Confirmer la désinscription</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Êtes-vous sûr de vouloir vous désinscrire de ce cours ? Vous perdrez l'accès à l'ensemble de son contenu et à votre progression actuelle.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Annuler</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={handleUnenroll}
+                            className="bg-red-600 hover:bg-red-700 text-white"
+                          >
+                            Oui, me désinscrire
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </>
                 ) : (
                   <Button
@@ -308,10 +338,10 @@ export default function CourseDetailPage() {
                         {content.parties.map((partie: any) => (
                           <div key={partie.id} className="border-l-4 border-primary pl-4 py-2">
                             <h4 className="font-semibold text-lg mb-2">{partie.titre}</h4>
-                            <div className="pl-4 border-l-2 border-gray-200 ml-1 space-y-1">
+                            <div className="pl-4 border-l-2 border-border ml-1 space-y-1">
                               {partie.chapitres && partie.chapitres.length > 0 ? (
                                 partie.chapitres.map((chapitre: any) => (
-                                  <p key={chapitre.id} className="text-sm text-gray-600">
+                                  <p key={chapitre.id} className="text-sm text-muted-foreground">
                                     {chapitre.numero}. {chapitre.titre}
                                   </p>
                                 ))
@@ -337,7 +367,7 @@ export default function CourseDetailPage() {
               <CardContent>
                 {!content ? (
                   <div className="text-center py-12">
-                    <FileText className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                    <FileText className="h-16 w-16 text-muted-foreground/50 mx-auto mb-4" />
                     <p className="text-muted-foreground">
                       {course.est_inscrit || course.est_proprietaire
                         ? "Chargement du contenu..."
@@ -442,7 +472,7 @@ export default function CourseDetailPage() {
 
                     {content.parties.length === 0 && (
                       <div className="text-center py-12">
-                        <FileText className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                        <FileText className="h-16 w-16 text-muted-foreground/50 mx-auto mb-4" />
                         <p className="text-muted-foreground">
                           Ce cours n'a pas encore de contenu structuré.
                         </p>
@@ -465,7 +495,7 @@ export default function CourseDetailPage() {
                 <CardContent>
                   {students.length === 0 ? (
                     <div className="text-center py-12">
-                      <Users className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                      <Users className="h-16 w-16 text-muted-foreground/50 mx-auto mb-4" />
                       <p className="text-muted-foreground">
                         Aucun étudiant inscrit pour le moment
                       </p>
@@ -475,17 +505,17 @@ export default function CourseDetailPage() {
                       {students.map((student) => (
                         <div
                           key={student.id}
-                          className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                          className="flex items-center justify-between p-4 bg-muted/40 rounded-lg hover:bg-muted transition-colors"
                         >
                           <div>
-                            <div className="font-medium text-gray-900">
+                            <div className="font-medium">
                               {student.prenom} {student.nom}
                             </div>
-                            <div className="text-sm text-gray-600">
+                            <div className="text-sm text-muted-foreground">
                               {student.email}
                             </div>
                           </div>
-                          <Badge variant="outline" className="bg-white">
+                          <Badge variant="outline" className="bg-background">
                             {student.niveau}
                           </Badge>
                         </div>

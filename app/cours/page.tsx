@@ -88,7 +88,7 @@ export default function CourseCatalogPage() {
         {/* Barre de recherche */}
         <div className="mb-8 flex gap-2">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
             <Input
               placeholder="Rechercher un cours par titre, description..."
               value={searchQuery}
@@ -146,7 +146,7 @@ export default function CourseCatalogPage() {
                 </CardHeader>
 
                 <CardContent>
-                  <div className="space-y-2 text-sm text-gray-600">
+                  <div className="space-y-2 text-sm text-muted-foreground">
                     <div className="flex items-center gap-2">
                       <BookOpen className="h-4 w-4" />
                       <span>Par {course.enseignant_nom}</span>

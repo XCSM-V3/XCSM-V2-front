@@ -1,9 +1,117 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Lora:ital,wght@0,400;0,600;1,400&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 body {
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'Inter', Arial, Helvetica, sans-serif;
+}
+
+/* ── LECTURE PAGE PREMIUM STYLES ───────────────────────── */
+.lecture-sidebar {
+  background: linear-gradient(180deg, #0d1117 0%, #161b22 60%, #1c2333 100%);
+  border-right: 1px solid rgba(255,255,255,0.06);
+}
+
+.lecture-sidebar-item-active {
+  background: linear-gradient(90deg, rgba(16,185,129,0.18) 0%, rgba(16,185,129,0.06) 100%);
+  border-left: 2px solid #10b981;
+  color: #e2e8f0 !important;
+}
+
+.lecture-sidebar-item {
+  border-left: 2px solid transparent;
+  transition: all 0.15s ease;
+}
+.lecture-sidebar-item:hover {
+  background: rgba(255,255,255,0.04);
+  border-left-color: rgba(16,185,129,0.3);
+}
+
+.lecture-progress-bar {
+  background: linear-gradient(90deg, #10b981 0%, #34d399 50%, #6ee7b7 100%);
+  background-size: 200% auto;
+  animation: shimmer-progress 3s linear infinite;
+}
+
+@keyframes shimmer-progress {
+  0% { background-position: 200% center; }
+  100% { background-position: 0% center; }
+}
+
+.reading-content {
+  font-family: 'Lora', Georgia, serif;
+  font-size: 1.125rem;
+  line-height: 1.9;
+  color: #1e293b;
+  letter-spacing: 0.01em;
+}
+
+.reading-content h1, .reading-content h2, .reading-content h3 {
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  color: #0f172a;
+  margin-top: 2em;
+  margin-bottom: 0.75em;
+}
+
+.reading-content p { margin-bottom: 1.4em; }
+
+.reading-content strong { color: #0f172a; font-weight: 600; }
+
+.reading-content blockquote {
+  border-left: 3px solid #10b981;
+  padding: 1rem 1.5rem;
+  background: rgba(16,185,129,0.05);
+  border-radius: 0 0.5rem 0.5rem 0;
+  font-style: italic;
+  color: #475569;
+  margin: 1.5em 0;
+}
+
+.reading-content code {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.875em;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.3em;
+  padding: 0.1em 0.4em;
+}
+
+.reading-content pre {
+  background: #0f172a;
+  color: #e2e8f0;
+  border-radius: 0.75rem;
+  padding: 1.25rem 1.5rem;
+  overflow-x: auto;
+  margin: 1.5em 0;
+}
+
+.reading-content ul { padding-left: 1.5em; margin-bottom: 1.4em; }
+.reading-content li { margin-bottom: 0.5em; }
+
+.granule-card {
+  background: white;
+  border-radius: 1rem;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.04);
+  transition: box-shadow 0.2s ease;
+}
+
+.chapter-badge {
+  background: linear-gradient(135deg, rgba(16,185,129,0.15), rgba(52,211,153,0.08));
+  border: 1px solid rgba(16,185,129,0.2);
+  color: #059669;
+}
+
+.top-progress-line {
+  position: fixed;
+  top: 0; left: 0;
+  height: 3px;
+  z-index: 100;
+  background: linear-gradient(90deg, #10b981, #34d399, #6ee7b7);
+  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 @layer utilities {

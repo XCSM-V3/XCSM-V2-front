@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────────
-// XCSM V3 — Route API Streaming Gemini (CORRIGÉ & OPTIMISÉ)
+// XCSM V3 — Route API Streaming Gemini (CORRIGÉ & OPTIMISÉ + PROXY)
 // app/api/ai/chat/stream/route.ts
 //
 // SDK : @google/genai (nouvelle génération)
@@ -17,16 +17,13 @@ const API_KEY = process.env.GEMINI_API_KEY ?? "";
 // gemini-2.0-flash-lite : Ultra rapide, coût minimal
 // gemini-1.5-flash : Fallback stable
 const MODELS = [
-
   "gemini-3-flash-preview",
   "gemini-3.1-pro-preview",
   "gemini-pro",
   "gemini-2.5-flash-preview-04-17",  // 🧠 RAISONNEMENT - Dernier modèle avancé
-  "gemini-2.0-flash",                 // ⚡ PUISSANT - Standard rapide
-  "gemini-2.0-flash-lite",            // 🚀 RAPIDE - Version légère
-  "gemini-1.5-flash",                 // ✅ STABLE - Fallback sûr
-
-
+  "gemini-2.0-flash",                // ⚡ PUISSANT - Standard rapide
+  "gemini-2.0-flash-lite",           // 🚀 RAPIDE - Version légère
+  "gemini-1.5-flash",                // ✅ STABLE - Fallback sûr
 ];
 
 // ── Prompt système XCSM (optimisé) ─────────────────────────────
@@ -104,12 +101,14 @@ export async function POST(req: NextRequest) {
   let message: string;
   let context: Record<string, string> | null = null;
   let history: { role: "user" | "model"; content: string }[] = [];
+  let course_id: string | null = null;
 
   try {
     const body = await req.json();
     message = body.message?.trim() ?? "";
     context = body.context ?? null;
     history = Array.isArray(body.history) ? body.history : [];
+    course_id = body.course_id ?? null;
   } catch {
     return Response.json({ error: "JSON invalide" }, { status: 400 });
   }
@@ -117,6 +116,70 @@ export async function POST(req: NextRequest) {
   if (!message) {
     return Response.json({ error: "Message vide requis" }, { status: 400 });
   }
+
+  // =======================================================================
+  // AJOUT MODULE 1 : PROXY VERS LE BACKEND DJANGO (Avec Fallback Local)
+  // =======================================================================
+  if (course_id) {
+    try {
+      const authHeader = req.headers.get('authorization');
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+      const response = await fetch(`${API_BASE_URL}/api/v1/cours/${course_id}/chat/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(authHeader ? { "Authorization": authHeader } : {}),
+        },
+        body: JSON.stringify({
+          message: message,
+          history: history
+        }),
+      });
+
+      if (response.ok && response.body) {
+        console.log(`[XCSM AI] 🔀 Proxy activé vers Django pour le cours ${course_id}`);
+
+        const stream = new ReadableStream({
+          async start(controller) {
+            const reader = response.body?.getReader();
+            if (!reader) {
+              controller.close();
+              return;
+            }
+            try {
+              while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                controller.enqueue(value);
+              }
+            } catch (err) {
+              console.error("[XCSM AI] Erreur de lecture du stream Django:", err);
+              controller.error(err);
+            } finally {
+              controller.close();
+            }
+          }
+        });
+
+        return new Response(stream, {
+          headers: {
+            "Content-Type": "text/event-stream",
+            "Cache-Control": "no-cache, no-transform",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+          },
+        });
+      } else {
+        console.warn(`[XCSM AI] ⚠️ Backend Django indisponible (Statut: ${response.status}). Basculement sur l'IA locale...`);
+      }
+    } catch (proxyError) {
+      console.warn("[XCSM AI] ⚠️ Erreur du Proxy Django. Basculement sur l'IA locale Next.js...", proxyError);
+    }
+  }
+  // =======================================================================
+  // FIN AJOUT MODULE 1
+  // =======================================================================
 
   // Construction du contenu avec historique (limité aux 6 derniers échanges)
   const contents = [
@@ -272,6 +335,315 @@ export async function GET() {
     timestamp: new Date().toISOString(),
   });
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// // ─────────────────────────────────────────────────────────────────
+// // XCSM V3 — Route API Streaming Gemini (CORRIGÉ & OPTIMISÉ)
+// // app/api/ai/chat/stream/route.ts
+// //
+// // SDK : @google/genai (nouvelle génération)
+// // Modèles : Derniers Gemini gratuits disponibles (Avril 2026)
+// // ─────────────────────────────────────────────────────────────────
+
+// import { NextRequest } from "next/server";
+// import { GoogleGenAI, createUserContent, createModelContent } from "@google/genai";
+
+// const API_KEY = process.env.GEMINI_API_KEY ?? "";
+
+// // 🔥 MODÈLES GRATUITS LES PLUS PUISSANTS (Ordre de priorité Avril 2026)
+// // gemini-2.5-flash-preview : RAISONNEMENT AVANCÉ + multimodal (gratuit avec limites)
+// // gemini-2.0-flash : Standard puissant, très stable
+// // gemini-2.0-flash-lite : Ultra rapide, coût minimal
+// // gemini-1.5-flash : Fallback stable
+// const MODELS = [
+
+//   "gemini-3-flash-preview",
+//   "gemini-3.1-pro-preview",
+//   "gemini-pro",
+//   "gemini-2.5-flash-preview-04-17",  // 🧠 RAISONNEMENT - Dernier modèle avancé
+//   "gemini-2.0-flash",                 // ⚡ PUISSANT - Standard rapide
+//   "gemini-2.0-flash-lite",            // 🚀 RAPIDE - Version légère
+//   "gemini-1.5-flash",                 // ✅ STABLE - Fallback sûr
+
+
+// ];
+
+// // ── Prompt système XCSM (optimisé) ─────────────────────────────
+// const SYSTEM_PROMPT = `Tu es l'assistant pédagogique intelligent de la plateforme XCSM (eXtended Content Structured Module).
+
+// ## Identité
+// XCSM est une plateforme de gestion et diffusion de contenus pédagogiques pour l'enseignement supérieur, développée par des étudiants de l'ENSPY (École Nationale Supérieure Polytechnique de Yaoundé I, Cameroun), sous la supervision du Professeur BATCHAKUI Bernabé.
+
+// ## Capacités techniques
+// - Site : https://xcsm-frontend-app.vercel.app
+// - Backend : Django (Python) sur Render
+// - Frontend : Next.js 15 sur Vercel
+// - Bases : MySQL (auth) + MongoDB (granules)
+
+// ## Fonctionnalités XCSM
+// - Import PDF/DOCX → parsing automatique en granules
+// - Éditeur riche de contenu pédagogique
+// - Mode lecture immersive avec progression
+// - Recherche full-text dans les cours
+// - Export DOCX complet
+// - Dashboard analytics pour enseignants/étudiants
+
+// ## Structure pédagogique
+// Cours → Parties → Chapitres → Sections → Notions (granules atomiques)
+
+// ## Rôles
+// - **Enseignant** : crée cours, importe docs, gère étudiants, analytics
+// - **Étudiant** : s'inscrit avec code, consulte granules, mode lecture
+
+// ## Instructions CRITIQUES
+// 1. Tu réponds à TOUTES les questions : XCSM, sciences, maths, culture, actu, conseils...
+// 2. Tu es un assistant UNIVERSEL et pédagogique, pas limité à XCSM
+// 3. Réponds TOUJOURS en français
+// 4. Utilise Markdown : **gras**, listes, titres ##
+// 5. Sois concis (300-500 mots) sauf demande explicite de détail
+// 6. Si contexte fourni → base-toi dessus en priorité
+// 7. Admets honnêtement si tu ne sais pas`;
+
+// // ── Build contexte pédagogique ────────────────────────────────
+// function buildContext(ctx: Record<string, string> | null): string {
+//   if (!ctx) return "";
+//   const parts: string[] = ["\n\n---\n## 📍 Contexte de navigation actuelle"];
+
+//   if (ctx.courseTitle) parts.push(`📚 Cours : "${ctx.courseTitle}"`);
+//   if (ctx.partTitle) parts.push(`📂 Partie : "${ctx.partTitle}"`);
+//   if (ctx.chapterTitle) parts.push(`📖 Chapitre : "${ctx.chapterTitle}"`);
+//   if (ctx.sectionTitle) parts.push(`📑 Section : "${ctx.sectionTitle}"`);
+//   if (ctx.notionTitle) parts.push(`🔬 Notion : "${ctx.notionTitle}"`);
+
+//   if (ctx.notionContent) {
+//     const clean = ctx.notionContent
+//       .replace(/<[^>]+>/g, " ")
+//       .replace(/\s+/g, " ")
+//       .trim()
+//       .slice(0, 2500);
+//     parts.push(`\n📝 Contenu actuel :\n${clean}`);
+//   }
+
+//   parts.push("---\n");
+//   return parts.join("\n");
+// }
+
+// // ── POST : Streaming SSE ──────────────────────────────────────
+// export async function POST(req: NextRequest) {
+//   // Vérification API Key
+//   if (!API_KEY) {
+//     console.error("[XCSM AI] ❌ GEMINI_API_KEY manquante");
+//     return Response.json(
+//       { error: "Clé API Gemini non configurée dans .env.local" },
+//       { status: 500 }
+//     );
+//   }
+
+//   // Parsing body
+//   let message: string;
+//   let context: Record<string, string> | null = null;
+//   let history: { role: "user" | "model"; content: string }[] = [];
+
+//   try {
+//     const body = await req.json();
+//     message = body.message?.trim() ?? "";
+//     context = body.context ?? null;
+//     history = Array.isArray(body.history) ? body.history : [];
+//   } catch {
+//     return Response.json({ error: "JSON invalide" }, { status: 400 });
+//   }
+
+//   if (!message) {
+//     return Response.json({ error: "Message vide requis" }, { status: 400 });
+//   }
+
+//   // Construction du contenu avec historique (limité aux 6 derniers échanges)
+//   const contents = [
+//     ...history.slice(-6).map((m) =>
+//       m.role === "user"
+//         ? createUserContent(m.content)
+//         : createModelContent(m.content)
+//     ),
+//     createUserContent(message),
+//   ];
+
+//   const systemInstruction = SYSTEM_PROMPT + buildContext(context);
+//   const ai = new GoogleGenAI({ apiKey: API_KEY });
+//   const encoder = new TextEncoder();
+
+//   // Tentative des modèles en cascade
+//   for (const modelName of MODELS) {
+//     try {
+//       console.log(`[XCSM AI] 🚀 Tentative ${modelName}...`);
+
+//       const stream = await ai.models.generateContentStream({
+//         model: modelName,
+//         contents,
+//         config: {
+//           systemInstruction,
+//           temperature: 0.75,
+//           topK: 40,
+//           topP: 0.95,
+//           maxOutputTokens: 2048,
+//         },
+//       });
+
+//       // Stream SSE optimisé
+//       const sseStream = new ReadableStream({
+//         async start(controller) {
+//           let buffer = "";
+//           const sendBuffer = () => {
+//             if (buffer) {
+//               controller.enqueue(
+//                 encoder.encode(`data: ${JSON.stringify({ delta: buffer, done: false })}\n\n`)
+//               );
+//               buffer = "";
+//             }
+//           };
+
+//           try {
+//             for await (const chunk of stream) {
+//               const text = chunk.text ?? "";
+//               if (text) {
+//                 buffer += text;
+//                 // Envoi par chunks de 20 caractères pour fluidité
+//                 if (buffer.length >= 20) {
+//                   sendBuffer();
+//                 }
+//               }
+//             }
+//             // Envoi final
+//             sendBuffer();
+//             controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+//             console.log(`[XCSM AI] ✅ Succès avec ${modelName}`);
+//           } catch (err) {
+//             const msg = err instanceof Error ? err.message : String(err);
+//             console.error(`[XCSM AI] ❌ Erreur stream: ${msg}`);
+//             controller.enqueue(
+//               encoder.encode(`data: ${JSON.stringify({ error: msg, done: true })}\n\n`)
+//             );
+//           } finally {
+//             controller.close();
+//           }
+//         },
+//       });
+
+//       return new Response(sseStream, {
+//         headers: {
+//           "Content-Type": "text/event-stream",
+//           "Cache-Control": "no-cache, no-transform",
+//           "Connection": "keep-alive",
+//           "X-Accel-Buffering": "no",
+//           "X-AI-Model": modelName,
+//           "X-Content-Type-Options": "nosniff",
+//         },
+//       });
+
+//     } catch (err) {
+//       const msg = err instanceof Error ? err.message : String(err);
+//       const isQuota = msg.includes("429") || msg.includes("quota") || msg.includes("ResourceExhausted");
+//       const isNotFound = msg.includes("404") || msg.includes("not found");
+
+//       console.warn(`[XCSM AI] ⚠️ ${modelName} échoué: ${isQuota ? "QUOTA" : isNotFound ? "NOT_FOUND" : "ERROR"} - ${msg.slice(0, 100)}`);
+
+//       // Continue sur quota ou modèle non trouvé
+//       if (isQuota || isNotFound) continue;
+
+//       // Arrêt sur erreur critique (auth, network...)
+//       break;
+//     }
+//   }
+
+//   // Tous les modèles échoués
+//   console.error("[XCSM AI] ❌ Tous les modèles indisponibles");
+//   return Response.json(
+//     {
+//       error: "Service temporairement indisponible",
+//       message: "Tous les modèles Gemini sont saturés ou indisponibles. Réessayez dans 60 secondes.",
+//       action: "Vérifiez votre quota sur https://aistudio.google.com/app/apikey ou activez la facturation.",
+//     },
+//     { status: 503 }
+//   );
+// }
+
+// // ── GET : Diagnostic santé ────────────────────────────────────
+// export async function GET() {
+//   if (!API_KEY) {
+//     return Response.json({
+//       status: "error",
+//       message: "GEMINI_API_KEY manquante dans .env.local",
+//     }, { status: 500 });
+//   }
+
+//   const ai = new GoogleGenAI({ apiKey: API_KEY });
+//   const results: Record<string, string> = {};
+
+//   // Test rapide de tous les modèles
+//   for (const modelName of MODELS) {
+//     try {
+//       const start = Date.now();
+//       const result = await ai.models.generateContent({
+//         model: modelName,
+//         contents: [createUserContent("Réponds uniquement: OK")],
+//         config: { maxOutputTokens: 5, temperature: 0 },
+//       });
+//       const latency = Date.now() - start;
+//       results[modelName] = `✅ ${result.text?.trim() || "OK"} (${latency}ms)`;
+//     } catch (err: any) {
+//       const msg = err.message || "";
+//       if (msg.includes("429") || msg.includes("quota")) {
+//         results[modelName] = "⛔ QUOTA ÉPUISÉ";
+//       } else if (msg.includes("404") || msg.includes("not found")) {
+//         results[modelName] = "❌ NON DISPONIBLE";
+//       } else {
+//         results[modelName] = `❌ ${msg.slice(0, 50)}`;
+//       }
+//     }
+//   }
+
+//   const available = Object.entries(results).filter(([_, v]) => v.includes("✅"));
+
+//   return Response.json({
+//     status: available.length > 0 ? "ok" : "error",
+//     api_key: "✅ Configurée",
+//     models_status: results,
+//     recommended: available.length > 0 ? available[0][0] : null,
+//     timestamp: new Date().toISOString(),
+//   });
+// }
 
 
 

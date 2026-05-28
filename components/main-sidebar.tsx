@@ -69,6 +69,15 @@ export function MainSidebar() {
     item => !item.roles || (user && item.roles.includes(user.role))
   )
 
+  const isActiveHref = (href: string) => {
+    // Important: le lien "Tableau de bord" ne doit pas être actif sur toutes les sous-routes /dashboard/*
+    // sinon on a deux onglets verts en même temps.
+    if (href === "/dashboard" || href === "/dashboard/dashboard-eleve") {
+      return pathname === href
+    }
+    return pathname === href || pathname.startsWith(href + "/")
+  }
+
   const getUserInitials = () => {
     if (!user) return "?"
     if (user.prenom && user.nom) return `${user.prenom[0]}${user.nom[0]}`.toUpperCase()
@@ -135,7 +144,7 @@ export function MainSidebar() {
               href={item.href}
               className={cn(
                 "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
-                pathname === item.href || pathname.startsWith(item.href + "/")
+                isActiveHref(item.href)
                   ? "bg-primary/10 text-primary font-medium"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground"
               )}

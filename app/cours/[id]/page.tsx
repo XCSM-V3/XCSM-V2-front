@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react" // --- AJOUT MODULE 3 (useRef) ---
+import { useState, useEffect } from "react"
 import { useRouter, useParams, useSearchParams } from "next/navigation"
 import { useToast } from "@/components/ui/use-toast"
 import { Button } from "@/components/ui/button"
@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
+import { cn } from "@/lib/utils"
 import {
     AlertDialog,
     AlertDialogAction,
@@ -22,6 +23,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import {
     ChevronLeft,
+    ChevronDown,
     BookOpen,
     Users,
     Calendar,
@@ -29,10 +31,126 @@ import {
     Loader2,
     CheckCircle,
     XCircle,
-    PlayCircle
+    PlayCircle,
+    ChevronRight,
+    Eye,
+    ArrowRight
 } from "lucide-react"
 import { api, Course, Etudiant } from "@/lib/api"
 import { useAnalytics } from "@/hooks/useAnalytics" // --- AJOUT MODULE 3 ---
+import { useAuth } from "@/contexts/auth-context"
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/components/ui/dialog"
+
+interface Granule { id: string; titre: string; type: string; ordre: number; contenu: { html_content?: string; [key: string]: any } }
+interface SousSection { id: string; titre: string; numero: number; granules: Granule[] }
+interface Section { id: string; titre: string; numero: number; sous_sections: SousSection[] }
+interface Chapitre { id: string; titre: string; numero: number; sections: Section[] }
+interface Partie { id: string; titre: string; numero: number; chapitres: Chapitre[] }
+interface CourseStructure { cours: { id: string; titre: string; description: string; enseignant: string }; parties: Partie[] }
+
+function isUuidLike(value?: string | null) {
+    if (!value) return false
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)
+}
+
+function toCourseStructure(data: any): CourseStructure | null {
+    if (!data) return null
+
+    // Format attendu (legacy): { cours, parties }
+    if (data.cours && Array.isArray(data.parties)) {
+        const legacy = data as CourseStructure
+        const parties: Partie[] = (legacy.parties || []).map((p, pi) => ({
+            ...p,
+            chapitres: (p.chapitres || []).map((c, ci) => ({
+                ...c,
+                sections: (c.sections || []).map((s, si) => ({
+                    ...s,
+                    sous_sections: (s.sous_sections || []).map((ss, ssi) => ({
+                        ...ss,
+                        granules: (ss.granules || []).map((g, gi) => {
+                            const realId = String(g.id)
+                            const navId = `nav-${legacy.cours?.id ?? "cours"}-p${pi + 1}-c${ci + 1}-s${si + 1}-ss${ssi + 1}-g${gi + 1}`
+                            return {
+                                ...g,
+                                id: navId,
+                                _realId: isUuidLike(realId) ? realId : (g as any)._realId,
+                                contenu: {
+                                    ...g.contenu,
+                                    html_content: g.contenu?.html_content || g.contenu?.html || g.contenu?.content || ""
+                                }
+                            } as any
+                        }),
+                    })),
+                })),
+            })),
+        }))
+
+        return { ...legacy, parties }
+    }
+
+    // Format XCCM backend: { id, title, sections: [{ title, chapters: [{ title, paragraphs: [{ title, content }] }] }] }
+    if (data.id && data.title && Array.isArray(data.sections)) {
+        const cours = {
+            id: String(data.id),
+            titre: String(data.title),
+            description: String(data.introduction ?? data.description ?? ""),
+            enseignant: String(data.author?.name ?? ""),
+        }
+
+        const parties: Partie[] = data.sections.map((sec: any, pi: number) => {
+            const chapitres: Chapitre[] = (sec.chapters ?? []).map((ch: any, ci: number) => {
+                const sections: Section[] = (ch.paragraphs ?? []).map((p: any, si: number) => {
+                    const gId = `${data.id}-p${pi + 1}-c${ci + 1}-s${si + 1}`
+                    const granule: Granule = {
+                        id: gId,
+                        titre: String(p.title ?? `Section ${si + 1}`),
+                        type: "CONTENU",
+                        ordre: si + 1,
+                        contenu: { html_content: String(p.content ?? "") },
+                        _realId: isUuidLike(p.granule_id) ? String(p.granule_id) : undefined,
+                    } as any
+                    return {
+                        id: `${gId}-section`,
+                        titre: String(p.title ?? `Section ${si + 1}`),
+                        numero: si + 1,
+                        sous_sections: [
+                            {
+                                id: `${gId}-ss`,
+                                titre: "Contenu",
+                                numero: 1,
+                                granules: [granule],
+                            },
+                        ],
+                    }
+                })
+
+                return {
+                    id: `${data.id}-chap${ci + 1}-p${pi + 1}`,
+                    titre: String(ch.title ?? `Chapitre ${ci + 1}`),
+                    numero: ci + 1,
+                    sections,
+                }
+            })
+
+            return {
+                id: `${data.id}-part${pi + 1}`,
+                titre: String(sec.title ?? `Partie ${pi + 1}`),
+                numero: pi + 1,
+                chapitres,
+            }
+        })
+
+        return { cours, parties }
+    }
+
+    return null
+}
 
 export default function CourseDetailPage() {
     const router = useRouter()
@@ -40,29 +158,74 @@ export default function CourseDetailPage() {
     const courseId = params.id as string
     const searchParams = useSearchParams()
     const { toast } = useToast()
+    const { user } = useAuth()
+    const isEnseignant = user?.role === "enseignant" || user?.role === "admin"
 
     const [course, setCourse] = useState<Course | null>(null)
     const [students, setStudents] = useState<Etudiant[]>([])
     const [isLoading, setIsLoading] = useState(true)
     const [isEnrollLoading, setIsEnrollLoading] = useState(false)
     const [activeTab, setActiveTab] = useState("apercu")
-
-    // ==========================================================================
-    // --- AJOUT MODULE 3 : TRACKING SILENCIEUX (CHRONOMÈTRE) ---
-    // ==========================================================================
-    const { trackSession } = useAnalytics(courseId, undefined, "page_overview");
-    const startTimeRef = useRef<number>(Date.now());
+    const [structure, setStructure] = useState<CourseStructure | null>(null)
+    const [isContentLoading, setIsContentLoading] = useState(true)
+    const [expandedChapters, setExpandedChapters] = useState<Set<string>>(new Set())
 
     useEffect(() => {
-        startTimeRef.current = Date.now();
-        return () => {
-            const timeSpentSeconds = (Date.now() - startTimeRef.current) / 1000;
-            if (timeSpentSeconds > 5) {
-                trackSession(timeSpentSeconds);
+        if (!courseId) return
+        setIsContentLoading(true)
+        api.getCourseContent(courseId)
+            .then(data => {
+                const normalized = toCourseStructure(data)
+                setStructure(normalized)
+                if (normalized?.parties?.[0]?.chapitres?.[0]) {
+                    setExpandedChapters(new Set([normalized.parties[0].chapitres[0].id]))
+                }
+            })
+            .catch(err => {
+                console.error("Erreur structure:", err)
+            })
+            .finally(() => {
+                setIsContentLoading(false)
+            })
+    }, [courseId])
+
+    const toggleChapter = (chapterId: string) => {
+        setExpandedChapters(prev => {
+            const next = new Set(prev)
+            if (next.has(chapterId)) {
+                next.delete(chapterId)
+            } else {
+                next.add(chapterId)
             }
-        };
-    }, [courseId, trackSession]);
+            return next
+        })
+    }
+
+    const getChapterGranules = (ch: Chapitre): Granule[] => {
+        if (!ch.sections) return []
+        const list: Granule[] = []
+        ch.sections.forEach(s => {
+            if (s.sous_sections) {
+                s.sous_sections.forEach(ss => {
+                    if (ss.granules) {
+                        list.push(...ss.granules)
+                    }
+                })
+            }
+        })
+        return list
+    }
+
+    const getGranuleHtml = (g: Granule): string => {
+        if (!g.contenu) return ""
+        return g.contenu.html_content || g.contenu.html || g.contenu.content || ""
+    }
+
     // ==========================================================================
+    // Module analytics : pas de tracking granule "page_overview"
+    // La mesure se fait sur les pages `lecture` (granule réel).
+    // ==========================================================================
+    useAnalytics(courseId);
 
     useEffect(() => {
         // Si un onglet est spécifié dans l'URL, l'utiliser
@@ -163,10 +326,16 @@ export default function CourseDetailPage() {
                     <Button
                         variant="ghost"
                         className="mb-6 -ml-4 text-muted-foreground hover:text-foreground"
-                        onClick={() => router.back()}
+                        onClick={() => {
+                            if (course && course.matiere) {
+                                router.push(`/dashboard/matieres/${course.matiere}`)
+                            } else {
+                                router.push('/dashboard/matieres')
+                            }
+                        }}
                     >
                         <ChevronLeft className="mr-2 h-4 w-4" />
-                        Retour
+                        Retour au tableau de bord
                     </Button>
 
                     <div className="grid gap-6 md:grid-cols-[2fr_1fr]">
@@ -206,7 +375,7 @@ export default function CourseDetailPage() {
                         </div>
 
                         <div className="flex flex-col justify-center items-start md:items-end gap-4">
-                            {course.est_inscrit || course.est_proprietaire ? (
+                            {course.est_inscrit || course.est_proprietaire || isEnseignant ? (
                                 <Button size="lg" className="w-full md:w-auto" onClick={handleStartCourse}>
                                     <PlayCircle className="mr-2 h-5 w-5" />
                                     Ouvrir le cours
@@ -320,8 +489,8 @@ export default function CourseDetailPage() {
                                         </div>
                                         <div className="flex justify-between items-center py-2 border-b">
                                             <span className="text-muted-foreground">Accès</span>
-                                            <Badge variant={course.est_inscrit || course.est_proprietaire ? "default" : "secondary"}>
-                                                {course.est_inscrit || course.est_proprietaire ? "Accès complet" : "Accès restreint"}
+                                            <Badge variant={course.est_inscrit || course.est_proprietaire || isEnseignant ? "default" : "secondary"}>
+                                                {course.est_inscrit || course.est_proprietaire || isEnseignant ? "Accès complet" : "Accès restreint"}
                                             </Badge>
                                         </div>
                                     </CardContent>
@@ -332,23 +501,143 @@ export default function CourseDetailPage() {
 
                     <TabsContent value="contenu" className="mt-0">
                         <Card>
-                            <CardHeader>
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
                                 <CardTitle className="flex items-center gap-2">
                                     <BookOpen className="h-5 w-5" />
                                     Structure du cours
                                 </CardTitle>
+                                {structure && structure.parties.length > 0 && (
+                                    <Dialog>
+                                        <DialogTrigger asChild>
+                                            <Button variant="outline" size="sm" className="flex items-center gap-2 border-primary/30 text-primary hover:bg-primary/5 transition-all">
+                                                <Eye className="h-4 w-4" />
+                                                Aperçu complet du cours
+                                            </Button>
+                                        </DialogTrigger>
+                                        <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto p-8 rounded-2xl">
+                                            <DialogHeader className="mb-6 border-b pb-4">
+                                                <DialogTitle className="text-2xl font-bold flex items-center gap-3">
+                                                    <BookOpen className="h-6 w-6 text-primary" />
+                                                    Aperçu complet : {course.titre}
+                                                </DialogTitle>
+                                            </DialogHeader>
+                                            <div className="prose prose-slate dark:prose-invert max-w-none">
+                                                <div 
+                                                    className="text-muted-foreground leading-relaxed text-base"
+                                                    dangerouslySetInnerHTML={{ 
+                                                        __html: structure.parties.flatMap((partie) => 
+                                                            partie.chapitres.flatMap((chapitre) => 
+                                                                chapitre.sections.flatMap((section) => 
+                                                                    section.sous_sections.flatMap((ss) => 
+                                                                        ss.granules.map((g) => getGranuleHtml(g))
+                                                                    )
+                                                                )
+                                                            )
+                                                        ).join("\n") || '<p class="italic text-muted-foreground/30 text-center py-8">Aucun contenu disponible pour l\'aperçu.</p>'
+                                                    }} 
+                                                />
+                                            </div>
+                                        </DialogContent>
+                                    </Dialog>
+                                )}
                             </CardHeader>
                             <CardContent>
-                                <div className="text-center py-12">
-                                    <FileText className="h-16 w-16 text-muted-foreground/50 mx-auto mb-4" />
-                                    <p className="text-lg font-medium">Le programme détaillé sera bientôt disponible</p>
-                                    <p className="text-muted-foreground mt-2">
-                                        Inscrivez-vous ou ouvrez le cours pour accéder aux chapitres et sections.
-                                    </p>
-                                    <Button className="mt-6" onClick={handleStartCourse} disabled={!course.est_inscrit && !course.est_proprietaire}>
-                                        Commencer la lecture
-                                    </Button>
-                                </div>
+                                {isContentLoading ? (
+                                    <div className="flex flex-col items-center justify-center py-12 gap-3">
+                                        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                                        <p className="text-sm text-muted-foreground">Chargement du programme...</p>
+                                    </div>
+                                ) : structure ? (
+                                    <div className="space-y-6">
+                                        {structure.parties.map((partie, pi) => (
+                                            <div key={partie.id} className="border border-border/60 rounded-xl p-4 bg-muted/10">
+                                                <div className="flex items-center gap-3 mb-4">
+                                                    <span className="text-xs font-bold w-6 h-6 rounded-md flex items-center justify-center bg-primary/10 text-primary">
+                                                        {pi + 1}
+                                                    </span>
+                                                    <h4 className="text-xs font-bold uppercase tracking-wider text-foreground">
+                                                        {partie.titre}
+                                                    </h4>
+                                                </div>
+
+                                                <div className="space-y-3 md:pl-9">
+                                                    {partie.chapitres.map((ch) => {
+                                                        const isExpanded = expandedChapters.has(ch.id);
+                                                        const granules = getChapterGranules(ch);
+                                                        const granulesCount = granules.length;
+                                                        return (
+                                                            <div key={ch.id} className="bg-card border border-border/50 rounded-lg overflow-hidden shadow-sm">
+                                                                <button
+                                                                    onClick={() => toggleChapter(ch.id)}
+                                                                    className="w-full flex items-center justify-between p-4 hover:bg-muted/40 transition-colors text-left"
+                                                                >
+                                                                    <div className="flex items-center gap-3 min-w-0">
+                                                                        <span className="text-[10px] font-bold text-muted-foreground uppercase shrink-0">
+                                                                            Ch.{ch.numero}
+                                                                        </span>
+                                                                        <span className="font-medium text-xs truncate text-foreground">
+                                                                            {ch.titre}
+                                                                        </span>
+                                                                        <Badge variant="secondary" className="text-[9px] px-1.5 py-0">
+                                                                            {granulesCount} granule{granulesCount > 1 ? "s" : ""}
+                                                                        </Badge>
+                                                                    </div>
+                                                                    <ChevronDown
+                                                                        className={cn(
+                                                                            "h-4 w-4 text-muted-foreground transition-transform duration-200",
+                                                                            isExpanded && "rotate-180"
+                                                                        )}
+                                                                    />
+                                                                </button>
+
+                                                                {isExpanded && (
+                                                                    <div className="border-t bg-muted/5 p-4 space-y-2">
+                                                                        {granules.map(g => (
+                                                                            <div
+                                                                                key={g.id}
+                                                                                className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/40 transition-colors"
+                                                                            >
+                                                                                <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                                                                <span className="text-xs text-foreground font-medium flex-1">
+                                                                                    {g.titre}
+                                                                                </span>
+                                                                            </div>
+                                                                        ))}
+                                                                        {granulesCount === 0 && (
+                                                                            <p className="text-xs text-muted-foreground italic pl-3">Aucun contenu dans ce chapitre</p>
+                                                                        )}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        ))}
+
+                                        {structure.parties.length === 0 && (
+                                            <div className="text-center py-12">
+                                                <FileText className="h-16 w-16 text-muted-foreground/30 mx-auto mb-4" />
+                                                <p className="text-muted-foreground">Aucune structure de cours disponible.</p>
+                                            </div>
+                                        )}
+
+                                        <div className="flex justify-center pt-4">
+                                            <Button size="lg" className="gap-2" onClick={handleStartCourse} disabled={!course.est_inscrit && !course.est_proprietaire && !isEnseignant}>
+                                                Commencer la lecture
+                                                <ArrowRight className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="text-center py-12">
+                                        <FileText className="h-16 w-16 text-muted-foreground/30 mx-auto mb-4" />
+                                        <p className="text-muted-foreground">Le programme détaillé n'a pas pu être chargé.</p>
+                                        <Button className="mt-6" onClick={handleStartCourse} disabled={!course.est_inscrit && !course.est_proprietaire && !isEnseignant}>
+                                            Commencer la lecture
+                                        </Button>
+                                    </div>
+                                )}
                             </CardContent>
                         </Card>
                     </TabsContent>

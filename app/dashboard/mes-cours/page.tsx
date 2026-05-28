@@ -191,6 +191,11 @@ export default function MesCoursPage() {
                   <Badge className="bg-primary/20 text-primary hover:bg-primary/30">
                     {course.code}
                   </Badge>
+                  {user?.role === "enseignant" && !course.est_proprietaire && (
+                    <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-200">
+                      Collègue
+                    </Badge>
+                  )}
                   {user?.role === "etudiant" && (
                     <Badge className="bg-secondary text-secondary-foreground">
                       Inscrit
@@ -248,7 +253,7 @@ export default function MesCoursPage() {
                   </Link>
                 </Button>
 
-                {user?.role === "enseignant" && (
+                {user?.role === "enseignant" && course.est_proprietaire && (
                   <>
                     <Button
                       variant="outline"

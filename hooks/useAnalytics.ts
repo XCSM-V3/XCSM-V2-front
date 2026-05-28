@@ -39,8 +39,31 @@ async function sendEvent(event: TrackingEvent): Promise<void> {
     }
 }
 
-export function useAnalytics(course_id: string, session_id?: string, granule_id?: string, granule_title?: string) {
-    const actual_session_id = session_id || getAnonymousSessionId();
+type UseAnalyticsArgs = {
+    course_id: string;
+    session_id?: string;
+    granule_id?: string;
+    granule_title?: string;
+};
+
+function isUuidLike(value?: string | null) {
+    if (!value) return false;
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+}
+
+// Supporte aussi `useAnalytics({ course_id, granule_id, ... })`
+export function useAnalytics(
+    course_id_or_args: string | UseAnalyticsArgs,
+    session_id?: string,
+    granule_id?: string,
+    granule_title?: string
+) {
+    const args: UseAnalyticsArgs =
+        typeof course_id_or_args === "string"
+            ? { course_id: course_id_or_args, session_id, granule_id, granule_title }
+            : course_id_or_args;
+
+    const actual_session_id = args.session_id || getAnonymousSessionId();
     const { toast } = useToast();
 
     // ── AJOUT MODULE 3: États locaux pour le Dashboard et l'IA ──
@@ -53,37 +76,37 @@ export function useAnalytics(course_id: string, session_id?: string, granule_id?
         sendEvent({
             event_type: "ai_question_asked",
             session_id: actual_session_id,
-            course_id,
-            granule_id,
-            granule_title,
+            course_id: args.course_id,
+            granule_id: args.granule_id,
+            granule_title: args.granule_title,
             metadata: questionText ? { question_length: questionText.length } : {},
             timestamp: new Date().toISOString(),
         });
-    }, [actual_session_id, course_id, granule_id, granule_title]);
+    }, [actual_session_id, args.course_id, args.granule_id, args.granule_title]);
 
     // Tracker une action rapide IA (résumer, expliquer, suggérer)
     const trackAIAction = useCallback((action: "summarize" | "explain" | "suggest") => {
         sendEvent({
             event_type: "ai_quick_action",
             session_id: actual_session_id,
-            course_id,
-            granule_id,
-            granule_title,
+            course_id: args.course_id,
+            granule_id: args.granule_id,
+            granule_title: args.granule_title,
             metadata: { action },
             timestamp: new Date().toISOString(),
         });
-    }, [actual_session_id, course_id, granule_id, granule_title]);
+    }, [actual_session_id, args.course_id, args.granule_id, args.granule_title]);
 
     // Tracker une recherche
     const trackSearch = useCallback((query: string) => {
         sendEvent({
             event_type: "search_performed",
             session_id: actual_session_id,
-            course_id,
+            course_id: args.course_id,
             metadata: { query_length: query.length },
             timestamp: new Date().toISOString(),
         });
-    }, [actual_session_id, course_id]);
+    }, [actual_session_id, args.course_id]);
 
 
     // ========================================================================
@@ -91,31 +114,45 @@ export function useAnalytics(course_id: string, session_id?: string, granule_id?
     // ========================================================================
 
     const fetchDashboardData = useCallback(async () => {
-        if (!course_id) return;
+        if (!args.course_id) return;
         setIsLoading(true);
         try {
-            const response = await fetch(`/api/v1/analytics/dashboard/?course_id=${course_id}`);
+            const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
+            const response = await fetch(
+                `/api/analytics/dashboard?course_id=${args.course_id}&period=7`,
+                {
+                    headers: {
+                        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                    },
+                }
+            );
             const result = await response.json();
             if (response.ok) {
                 setData(result);
                 setError(null);
             } else {
-                setError(result.error || "Erreur lors du chargement des statistiques");
+                // On remonte le détail backend si présent (utile pour diagnostiquer 403)
+                setError(result.detail ? `${result.error || "Erreur"} (${result.detail})` : (result.error || "Erreur lors du chargement des statistiques"));
             }
         } catch (err: any) {
             setError(err.message || "Erreur réseau");
         } finally {
             setIsLoading(false);
         }
-    }, [course_id]);
+    }, [args.course_id]);
 
     const generateSynthesis = async (): Promise<string | null> => {
-        if (!course_id) return null;
+        if (!args.course_id) return null;
         try {
-            const response = await fetch('/api/v1/analytics/synthesis/', {
+            const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
+            const response = await fetch('/api/analytics/synthesis', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ course_id })
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                },
+                // note: cette route attend aussi des granules ; si non fournis, l'appel peut échouer.
+                body: JSON.stringify({ course_id: args.course_id })
             });
             const result = await response.json();
             return result.synthesis;
@@ -130,24 +167,74 @@ export function useAnalytics(course_id: string, session_id?: string, granule_id?
     };
 
     const trackSession = useCallback(async (timeSpentSeconds: number, successRate?: number, specificGranuleId?: string) => {
-        const targetGranule = specificGranuleId || granule_id;
-        if (!course_id || !targetGranule) return;
+        const targetGranule = specificGranuleId || args.granule_id;
+        if (!args.course_id || !targetGranule) return;
+        if (!isUuidLike(targetGranule)) return;
+
+        const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
+
         try {
-            await fetch('/api/v1/analytics/track/', {
+            await fetch('/api/analytics/track', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                },
                 body: JSON.stringify({
-                    course_id: course_id,
+                    course_id: args.course_id,
                     granule_id: targetGranule,
                     time_spent: Math.round(timeSpentSeconds),
-                    success_rate: successRate
+                    success_rate: successRate ?? null
                 })
             });
-            console.log(`[Analytics] Session Django trackée: ${timeSpentSeconds}s`);
+            console.log(`[Analytics] Session trackée: ${timeSpentSeconds}s`);
         } catch (err) {
             console.error("[Analytics] Échec du tracking Django", err);
         }
-    }, [course_id, granule_id]);
+    }, [args.course_id, args.granule_id]);
+
+    // Tracking silencieux du temps passé sur un granule (granule time-on-page)
+    const startTimeRef = useRef<number | null>(null);
+    const lastGranuleIdRef = useRef<string | null>(null);
+
+    useEffect(() => {
+        // Ne tracker que si granule_id est un UUID valide
+        if (!args.granule_id || !isUuidLike(args.granule_id) || !args.course_id) return;
+
+        const now = Date.now();
+        if (startTimeRef.current === null) {
+            startTimeRef.current = now;
+            lastGranuleIdRef.current = args.granule_id;
+            return;
+        }
+
+        // Si granule changé, on envoie le temps du granule précédent
+        const prevGranuleId = lastGranuleIdRef.current;
+        const prevStartTime = startTimeRef.current;
+
+        if (prevGranuleId && prevStartTime && prevGranuleId !== args.granule_id) {
+            const seconds = (now - prevStartTime) / 1000;
+            if (seconds > 2) {
+                trackSession(seconds, undefined, prevGranuleId);
+            }
+        }
+
+        startTimeRef.current = now;
+        lastGranuleIdRef.current = args.granule_id;
+    }, [args.course_id, args.granule_id, trackSession]);
+
+    useEffect(() => {
+        return () => {
+            const prevGranuleId = lastGranuleIdRef.current;
+            const prevStartTime = startTimeRef.current;
+            if (!prevGranuleId || !prevStartTime) return;
+            const seconds = (Date.now() - prevStartTime) / 1000;
+            if (seconds > 2) {
+                trackSession(seconds, undefined, prevGranuleId);
+            }
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [trackSession]);
 
     return {
         trackAIQuestion,
@@ -159,7 +246,7 @@ export function useAnalytics(course_id: string, session_id?: string, granule_id?
         error,
         fetchDashboardData,
         generateSynthesis,
-        trackSession
+        trackSession,
     };
 }
 

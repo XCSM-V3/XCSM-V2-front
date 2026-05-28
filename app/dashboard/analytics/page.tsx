@@ -80,8 +80,11 @@ export default function AnalyticsDashboardPage() {
                 { headers: token ? { Authorization: `Bearer ${token}` } : {} }
             );
 
-            if (!res.ok) throw new Error(`Erreur ${res.status}`);
-            const data = await res.json();
+            const data = await res.json().catch(() => ({} as any));
+            if (!res.ok) {
+                const detail = (data && (data.detail || data.error)) ? ` — ${data.detail || data.error}` : "";
+                throw new Error(`Erreur ${res.status}${detail}`);
+            }
 
             setAnalytics(data.analytics);
             setAlerts(data.alerts ?? []);

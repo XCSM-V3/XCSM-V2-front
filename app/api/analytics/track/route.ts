@@ -19,7 +19,40 @@ export async function POST(req: NextRequest) {
     try {
         const event = await req.json();
 
-        // Validation minimale
+        const authHeader = req.headers.get("Authorization");
+
+        // 1) Mode "tracking temps sur granule" (payload minimal pour alimenter TrackingSession)
+        // Attendu côté backend :
+        // { course_id, granule_id, time_spent, success_rate? }
+        if (event && event.course_id && event.granule_id && event.time_spent !== undefined) {
+            const response = await fetch(`${BACKEND_URL}/api/v1/analytics/track/`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    ...(authHeader ? { Authorization: authHeader } : {}),
+                },
+                body: JSON.stringify({
+                    course_id: event.course_id,
+                    granule_id: event.granule_id,
+                    time_spent: event.time_spent,
+                    success_rate: event.success_rate ?? null,
+                }),
+                signal: AbortSignal.timeout(5000),
+            });
+
+            if (response.ok) {
+                return Response.json({ status: "ok", stored: "backend" });
+            }
+
+            const text = await response.text().catch(() => "");
+            return Response.json(
+                { error: "Tracking backend en erreur", detail: text || response.statusText },
+                { status: response.status }
+            );
+        }
+
+        // 2) Mode "événements IA / navigation" : backend n'ayant pas encore d'endpoint events,
+        // on bufferise pour ne pas perdre l'info (dev/offline).
         if (!event.event_type || !event.course_id || !event.session_id) {
             return Response.json({ error: "Événement invalide" }, { status: 400 });
         }
@@ -30,22 +63,6 @@ export async function POST(req: NextRequest) {
             server_timestamp: new Date().toISOString(),
             ip_hash: null, // RGPD : pas d'IP stockée
         };
-
-        // Tenter d'envoyer au backend Django
-        try {
-            const response = await fetch(`${BACKEND_URL}/api/v1/analytics/events/`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(enrichedEvent),
-                signal: AbortSignal.timeout(3000), // Timeout 3s
-            });
-
-            if (response.ok) {
-                return Response.json({ status: "ok", stored: "backend" });
-            }
-        } catch {
-            // Backend indisponible → fallback mémoire
-        }
 
         // Fallback : stockage en mémoire (développement / backend offline)
         if (eventBuffer.length < MAX_BUFFER) {

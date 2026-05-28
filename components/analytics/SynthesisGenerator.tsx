@@ -11,7 +11,7 @@ import {
     Loader2, BookOpen, Target, Lightbulb
 } from "lucide-react";
 import type { GeneratedSynthesis } from "@/types/analytics.types";
-import { useAnalytics } from "@/hooks/useAnalytics"; // --- AJOUT MODULE 3 ---
+// Synthèse : appel direct vers la route Next (Gemini)
 
 interface Props {
     courseTitle: string;
@@ -26,8 +26,7 @@ export default function SynthesisGenerator({ courseTitle, availableGranules, cou
     const [synthesis, setSynthesis] = useState<GeneratedSynthesis | null>(null);
     const [error, setError] = useState<string | null>(null);
 
-    // --- AJOUT MODULE 3: Chargement du Hook ---
-    const { generateSynthesis } = useAnalytics(courseId || "");
+    // (Plus de hook : on appelle directement l'API Next côté serveur)
 
     const toggleGranule = (id: string) =>
         setSelectedIds((p) => p.includes(id) ? p.filter((x) => x !== id) : [...p, id]);
@@ -45,66 +44,35 @@ export default function SynthesisGenerator({ courseTitle, availableGranules, cou
         setError(null);
 
         // ====================================================================
-        // --- AJOUT MODULE 3 : APPEL RÉEL VERS DJANGO/GEMINI ---
+        // Appel réel Gemini via la route Next
         // ====================================================================
-        if (courseId) {
-            const resultText = await generateSynthesis();
-            if (resultText) {
-                // On mappe le texte brut de Gemini dans la belle UI existante
-                setSynthesis({
-                    title: `Synthèse IA: ${courseTitle}`,
-                    sections: [{
-                        title: "Rapport d'Analyse (Gemini)",
-                        content: resultText,
-                        source_granule: "Global"
-                    }],
-                    key_concepts: ["Tracking", "Progression", "Analyse ML"],
-                    exam_tips: ["Consultez les zones de difficulté signalées par l'enseignant."],
-                    generated_at: new Date().toISOString()
-                });
-                setIsGenerating(false);
-                return;
-            }
-        }
-        // ====================================================================
+        try {
+            const selectedGranules = availableGranules
+                .filter((g) => selectedIds.includes(g.id))
+                .map((g) => ({ title: g.title, content: g.content }));
 
-        // Simulation d'appel API (Fallback existant)
-        setTimeout(() => {
-            try {
-                // ... logiques fake conservées ...
-                setSynthesis({
-                    title: `Fiche de Révision : ${courseTitle}`,
-                    sections: [
-                        {
-                            title: "Vue d'ensemble",
-                            content: `Cette synthèse couvre les concepts clés des ${selectedIds.length} granules sélectionnés. L'accent est mis sur la compréhension fondamentale et les applications pratiques.`,
-                            source_granule: selectedIds[0]
-                        },
-                        {
-                            title: "Points critiques",
-                            content: "1. La distinction entre les concepts primaires et secondaires.\n2. L'application des formules dans des contextes non standards.\n3. L'analyse des résultats aberrants.",
-                            source_granule: selectedIds[Math.min(1, selectedIds.length - 1)]
-                        }
-                    ],
-                    key_concepts: [
-                        "Optimisation algorithmique",
-                        "Complexité spatiale",
-                        "Structures de données avancées",
-                        "Paradigmes de programmation"
-                    ].slice(0, Math.max(2, selectedIds.length)),
-                    exam_tips: examFocus ? [
-                        "Attention au piège classique sur le chapitre 2.",
-                        "Revoyez la démonstration de la page 45.",
-                        "Gérez bien votre temps sur les questions de calcul."
-                    ] : [],
-                    generated_at: new Date().toISOString()
-                });
-            } catch (err) {
-                setError("Erreur lors de la génération de la synthèse.");
-            } finally {
-                setIsGenerating(false);
+            const res = await fetch("/api/analytics/synthesis", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    granules: selectedGranules,
+                    course_title: courseTitle,
+                    exam_focus: examFocus,
+                }),
+            });
+
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.error || "Erreur génération synthèse");
             }
-        }, 2000);
+
+            const data = await res.json();
+            setSynthesis(data);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Erreur lors de la génération de la synthèse.");
+        } finally {
+            setIsGenerating(false);
+        }
     };
 
     return (

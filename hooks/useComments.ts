@@ -21,6 +21,11 @@ function authHeaders(): Record<string, string> {
         : { "Content-Type": "application/json" };
 }
 
+function isUuidLike(value?: string | null): boolean {
+    if (!value) return false;
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+}
+
 function buildAuthor(user: any) {
     if (!user) {
         return { id: "anon", display_name: "Anonyme", role: "etudiant", initials: "AN" };
@@ -47,10 +52,18 @@ export function useComments(granuleId: string, courseId: string) {
     const [error, setError] = useState<string | null>(null);
     const [sort, setSort] = useState<"top" | "recent">("top");
     const [typeFilter, setTypeFilter] = useState<CommentType | "all">("all");
+    const isPersistedGranule = isUuidLike(granuleId);
 
     // Charger les commentaires
     const load = useCallback(async () => {
         if (!granuleId) return;
+        if (!isPersistedGranule) {
+            // Granule synthétique (format XCCM) : pas de persistance commentaires côté backend.
+            setComments([]);
+            setTotal(0);
+            setError("Commentaires indisponibles pour ce granule (ID non persisté).");
+            return;
+        }
         setIsLoading(true);
         setError(null);
         try {
@@ -70,7 +83,7 @@ export function useComments(granuleId: string, courseId: string) {
         } finally {
             setIsLoading(false);
         }
-    }, [granuleId, courseId, sort, typeFilter]);
+    }, [granuleId, courseId, sort, typeFilter, isPersistedGranule]);
 
     useEffect(() => {
         load();
@@ -79,6 +92,10 @@ export function useComments(granuleId: string, courseId: string) {
     // Poster un commentaire
     const postComment = useCallback(
         async (type: CommentType, content: string): Promise<boolean> => {
+            if (!isPersistedGranule) {
+                setError("Impossible de commenter ce granule tant qu'il n'a pas d'identifiant valide.");
+                return false;
+            }
             setIsSubmitting(true);
             setError(null);
             try {
@@ -108,7 +125,7 @@ export function useComments(granuleId: string, courseId: string) {
                 setIsSubmitting(false);
             }
         },
-        [granuleId, courseId, user]
+        [granuleId, courseId, user, isPersistedGranule]
     );
 
     // Voter sur un commentaire

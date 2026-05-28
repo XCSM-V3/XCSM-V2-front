@@ -41,6 +41,7 @@ export interface Course {
   image  :"png" | "jpg" | "jpeg" | null
   progress?: number
   last_accessed?: string
+  matiere?: string
 }
 
 export interface Document {

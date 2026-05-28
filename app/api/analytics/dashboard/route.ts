@@ -4,6 +4,9 @@
 // ─────────────────────────────────────────────
 
 import { NextRequest } from "next/server";
+
+export const dynamic = "force-dynamic"; // Désactive le cache de Next.js
+
 import type { CourseAnalytics, GranuleMetric, PedagogicalAlert } from "../../../../types/analytics.types"
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
@@ -104,6 +107,8 @@ function generateDemoAnalytics(courseId: string, period: number): CourseAnalytic
 function generateAlerts(analytics: CourseAnalytics): PedagogicalAlert[] {
     const alerts: PedagogicalAlert[] = [];
 
+    const totalAi = analytics.total_ai_interactions || 0;
+
     analytics.difficult_zones.forEach((zone, i) => {
         if (zone.ai_questions_count > 20) {
             alerts.push({
@@ -116,7 +121,7 @@ function generateAlerts(analytics: CourseAnalytics): PedagogicalAlert[] {
                 granule_title: zone.granule_title,
                 message: `Zone d'ombre détectée : "${zone.granule_title}"`,
                 detail: `${zone.ai_questions_count} questions IA posées sur cette notion. Les étudiants ont du mal à comprendre ce contenu.`,
-                percentage: Math.round((zone.ai_questions_count / analytics.total_ai_interactions) * 100),
+                percentage: totalAi > 0 ? Math.round((zone.ai_questions_count / totalAi) * 100) : 0,
                 created_at: new Date(Date.now() - i * 3600000).toISOString(),
                 is_read: false,
             });
@@ -161,26 +166,37 @@ export async function GET(req: NextRequest) {
             `${BACKEND_URL}/api/v1/analytics/dashboard/?course_id=${courseId}&period=${period}`,
             {
                 headers: authHeader ? { Authorization: authHeader } : {},
-                signal: AbortSignal.timeout(5000),
+                // Les calculs peuvent prendre un peu de temps selon la taille des données
+                signal: AbortSignal.timeout(20000),
             }
         );
 
-        if (response.ok) {
-            const data = await response.json();
-            return Response.json(data);
+        if (!response.ok) {
+            const text = await response.text().catch(() => "");
+            return Response.json(
+                {
+                    error: "Backend analytics en erreur",
+                    status: response.status,
+                    detail: text || response.statusText,
+                },
+                { status: response.status }
+            );
         }
-    } catch {
-        // Backend indisponible → mode démo
+
+        const analytics = await response.json();
+        const alerts = generateAlerts(analytics);
+
+        return Response.json({
+            analytics,
+            alerts,
+            mode: "live",
+            message: "Données analytics live",
+        });
+    } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        return Response.json(
+            { error: "Impossible de joindre le backend analytics", detail: msg },
+            { status: 502 }
+        );
     }
-
-    // Mode démo : données simulées réalistes
-    const analytics = generateDemoAnalytics(courseId, period);
-    const alerts = generateAlerts(analytics);
-
-    return Response.json({
-        analytics,
-        alerts,
-        mode: "demo",
-        message: "Données de démonstration (backend Analytics non connecté)",
-    });
 }

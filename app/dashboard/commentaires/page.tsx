@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { TypeBadge, StatusBadge } from "@/components/comments/CommentBadge";
+import NotificationsBell from "@/components/comments/NotificationsBell";
 import type { Comment } from "@/types/comments.types";
 
 // ── Helpers ──────────────────────────────────────────────────
@@ -75,12 +76,9 @@ export default function TeacherCommentsDashboard() {
                 const list = Array.isArray(data) ? data : data.courses ?? data.results ?? [];
                 setCourses(list.map((c: any) => ({ id: c.id, titre: c.titre ?? c.title ?? "Sans titre" })));
             })
-            .catch(() => {
-                // Démo : courses fictifs
-                setCourses([
-                    { id: "demo1", titre: "Mathématiques Avancées" },
-                    { id: "demo2", titre: "Algorithmique et Structures de Données" },
-                ]);
+            .catch((err) => {
+                console.error("Erreur chargement cours:", err);
+                setCourses([]);
             });
     }, [isAuthenticated]);
 
@@ -155,14 +153,17 @@ export default function TeacherCommentsDashboard() {
                         Gérez les annotations, suggestions et questions de vos étudiants
                     </p>
                 </div>
-                <button
-                    onClick={loadComments}
-                    disabled={isLoading}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-muted border border-border rounded-lg text-sm text-foreground hover:bg-accent transition-colors disabled:opacity-40"
-                >
-                    <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? "animate-spin" : ""}`} />
-                    Actualiser
-                </button>
+                <div className="flex items-center gap-3">
+                    <NotificationsBell />
+                    <button
+                        onClick={loadComments}
+                        disabled={isLoading}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-muted border border-border rounded-lg text-sm text-foreground hover:bg-accent transition-colors disabled:opacity-40"
+                    >
+                        <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? "animate-spin" : ""}`} />
+                        Actualiser
+                    </button>
+                </div>
             </div>
 
             {/* ── Stats ── */}

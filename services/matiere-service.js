@@ -50,6 +50,54 @@ const matiereService = {
             console.error("Error joining matiere:", error)
             throw error
         }
+    },
+
+    // Récupérer les co-enseignants d'une matière
+    getCoTeachers: async (matiereId) => {
+        try {
+            const response = await api.get(`matieres/${matiereId}/enseignants/`)
+            return response.data || response
+        } catch (error) {
+            console.error(`Error fetching co-teachers for matiere ${matiereId}:`, error)
+            throw error
+        }
+    },
+
+    // Ajouter un ou plusieurs co-enseignants à une matière
+    addCoTeachers: async (matiereId, teacherIds) => {
+        try {
+            const response = await api.post(`matieres/${matiereId}/enseignants/`, { teacher_ids: teacherIds })
+            return response.data || response
+        } catch (error) {
+            console.error("Error adding co-teachers:", error)
+            throw error
+        }
+    },
+
+    // Récupérer tous les enseignants de la plateforme
+    getAllTeachers: async () => {
+        try {
+            const response = await api.get("enseignants/")
+            return response.data || response
+        } catch (error) {
+            console.error("Error fetching all teachers:", error)
+            throw error
+        }
+    },
+
+    // Retirer un co-enseignant d'une matière
+    removeCoTeacher: async (matiereId, teacherId) => {
+        try {
+            const response = await api.request(`matieres/${matiereId}/enseignants/`, {
+                method: "DELETE",
+                body: JSON.stringify({ id: teacherId }),
+                headers: { "Content-Type": "application/json" }
+            })
+            return response.data || response
+        } catch (error) {
+            console.error("Error removing co-teacher:", error)
+            throw error
+        }
     }
 }
 

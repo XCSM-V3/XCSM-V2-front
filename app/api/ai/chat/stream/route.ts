@@ -17,13 +17,11 @@ const API_KEY = process.env.GEMINI_API_KEY ?? "";
 // gemini-2.0-flash-lite : Ultra rapide, coût minimal
 // gemini-1.5-flash : Fallback stable
 const MODELS = [
-  "gemini-3-flash-preview",
-  "gemini-3.1-pro-preview",
-  "gemini-pro",
-  "gemini-2.5-flash-preview-04-17",  // 🧠 RAISONNEMENT - Dernier modèle avancé
-  "gemini-2.0-flash",                // ⚡ PUISSANT - Standard rapide
-  "gemini-2.0-flash-lite",           // 🚀 RAPIDE - Version légère
-  "gemini-1.5-flash",                // ✅ STABLE - Fallback sûr
+  "gemini-2.5-flash",          // ✅ Meilleur modèle gratuit (Mai 2026)
+  "gemini-2.5-flash-lite",     // ✅ Version légère rapide
+  "gemini-2.0-flash",          // ✅ Standard stable
+  "gemini-2.0-flash-lite",     // ✅ Ultra rapide
+  "gemini-2.0-flash-001",      // ✅ Version fixe stable
 ];
 
 // ── Prompt système XCSM (optimisé) ─────────────────────────────

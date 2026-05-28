@@ -103,8 +103,8 @@ export default function MatieresPage() {
     }
 
     const handleCreateMatiere = async () => {
-        if (!newMatiere.titre || !newMatiere.code) {
-            toast({ title: "Erreur", description: "Titre et Code requis", variant: "destructive" })
+        if (!newMatiere.titre) {
+            toast({ title: "Erreur", description: "Le titre est requis", variant: "destructive" })
             return
         }
         setDialogLoading(true)
@@ -114,9 +114,10 @@ export default function MatieresPage() {
             setIsCreateOpen(false)
             fetchMatieres()
         } catch (error: any) {
+            const msg = error?.message || "Erreur lors de la création"
             toast({
                 title: "Erreur",
-                description: "Erreur lors de la création (Vérifiez si le code est unique)",
+                description: msg.length > 150 ? msg.substring(0, 150) + "…" : msg,
                 variant: "destructive"
             })
         } finally {

@@ -64,9 +64,13 @@ export default function DashboardPage() {
     value,
     icon: Icon,
     color,
-    description
+    description,
+    href
   }: any) => (
-    <Card className="hover:shadow-lg transition-shadow">
+    <Card
+      className={`hover:shadow-lg transition-all ${href ? "cursor-pointer hover:border-primary/40 hover:-translate-y-0.5" : ""}`}
+      onClick={() => href && router.push(href)}
+    >
       <CardContent className="p-6">
         <div className="flex items-start justify-between">
           <div className="flex-1">
@@ -113,11 +117,8 @@ export default function DashboardPage() {
           value={stats.totalCourses}
           icon={BookOpen}
           color="bg-primary"
-          description={
-            user?.role === "enseignant"
-              ? "Cours créés"
-              : "Cours suivis"
-          }
+          description={user?.role === "enseignant" ? "Cours créés" : "Cours suivis"}
+          href="/dashboard/mes-cours"
         />
 
         {user?.role === "enseignant" && (
@@ -127,6 +128,7 @@ export default function DashboardPage() {
             icon={Users}
             color="bg-blue-600"
             description="Inscrits à vos cours"
+            href="/dashboard/mes-cours"
           />
         )}
 
@@ -136,6 +138,7 @@ export default function DashboardPage() {
           icon={FileText}
           color="bg-purple-600"
           description="Contenus disponibles"
+          href="/dashboard/mes-cours"
         />
       </div>
 

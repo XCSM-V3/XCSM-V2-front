@@ -28,7 +28,12 @@ export function LoginForm() {
       await login(email, password)
       router.push("/dashboard")
     } catch (err: any) {
-      setError(err.message)
+      // Timeout AbortSignal → message lisible
+      if (err?.name === "TimeoutError" || err?.name === "AbortError") {
+        setError("Le serveur met trop de temps à répondre. Réessayez dans quelques secondes.")
+      } else {
+        setError(err.message)
+      }
     } finally {
       setLoading(false)
     }

@@ -152,6 +152,8 @@ class API {
         ...headers,
         ...options.headers,
       },
+      // Timeout 15s — évite le spinner infini si Render est en cold start
+      signal: options.signal ?? AbortSignal.timeout(15000),
     }
 
     try {

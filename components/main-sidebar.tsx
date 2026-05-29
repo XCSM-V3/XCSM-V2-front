@@ -21,6 +21,7 @@ import {
   School,
   BarChart3,
   MessageSquare,
+  BookOpen,
 } from "lucide-react"
 
 export function MainSidebar() {
@@ -40,6 +41,11 @@ export function MainSidebar() {
       title: "Tableau de bord",
       href: user?.role === "etudiant" ? "/dashboard/dashboard-eleve" : "/dashboard",
       icon: LayoutDashboard,
+    },
+    {
+      title: "Mes Cours",
+      href: "/dashboard/mes-cours",
+      icon: BookOpen,
     },
     {
       title: "Mes Matières",
@@ -129,7 +135,11 @@ export function MainSidebar() {
         {/* Bouton Créer (enseignant) */}
         {user?.role === "enseignant" && (
           <div className="p-4">
-            <Button className="w-full bg-green-600 hover:bg-green-700" size="sm">
+            <Button
+              className="w-full bg-green-600 hover:bg-green-700"
+              size="sm"
+              onClick={() => router.push("/importer-document")}
+            >
               <PlusCircle className="mr-2 h-4 w-4" />
               Créer un document
             </Button>

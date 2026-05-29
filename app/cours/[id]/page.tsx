@@ -591,20 +591,63 @@ export default function CourseDetailPage() {
                                                                 </button>
 
                                                                 {isExpanded && (
-                                                                    <div className="border-t bg-muted/5 p-4 space-y-2">
-                                                                        {granules.map(g => (
-                                                                            <div
-                                                                                key={g.id}
-                                                                                className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/40 transition-colors"
-                                                                            >
-                                                                                <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                                                                                <span className="text-xs text-foreground font-medium flex-1">
-                                                                                    {g.titre}
-                                                                                </span>
-                                                                            </div>
-                                                                        ))}
-                                                                        {granulesCount === 0 && (
-                                                                            <p className="text-xs text-muted-foreground italic pl-3">Aucun contenu dans ce chapitre</p>
+                                                                    <div className="border-t bg-muted/5 p-4 space-y-4">
+                                                                        {ch.sections && ch.sections.length > 0 ? (
+                                                                            ch.sections.map((section, si) => (
+                                                                                <div key={section.id}>
+                                                                                    {/* Section / Paragraphe */}
+                                                                                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1.5">
+                                                                                        <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary/50" />
+                                                                                        {section.titre || `Paragraphe ${si + 1}`}
+                                                                                    </p>
+                                                                                    <div className="space-y-1 pl-3 border-l border-border/50">
+                                                                                        {section.sous_sections && section.sous_sections.length > 0 ? (
+                                                                                            section.sous_sections.map((ss, ssi) => (
+                                                                                                <div key={ss.id} className="space-y-1">
+                                                                                                    {/* Sous-section si titre différent de la section */}
+                                                                                                    {ss.titre && ss.titre !== section.titre && (
+                                                                                                        <p className="text-[10px] text-muted-foreground font-medium italic pl-1 pt-1">
+                                                                                                            {ss.titre}
+                                                                                                        </p>
+                                                                                                    )}
+                                                                                                    {/* Granules / Notions */}
+                                                                                                    {ss.granules && ss.granules.map(g => (
+                                                                                                        <div
+                                                                                                            key={g.id}
+                                                                                                            className="flex items-center gap-2 p-2 rounded-md hover:bg-muted/40 transition-colors"
+                                                                                                        >
+                                                                                                            <FileText className="h-3 w-3 text-primary/60 shrink-0" />
+                                                                                                            <span className="text-xs text-foreground font-medium flex-1">
+                                                                                                                {g.titre}
+                                                                                                            </span>
+                                                                                                            <Badge variant="outline" className="text-[9px] px-1 py-0 border-primary/20 text-primary/70">
+                                                                                                                {g.type || "CONTENU"}
+                                                                                                            </Badge>
+                                                                                                        </div>
+                                                                                                    ))}
+                                                                                                </div>
+                                                                                            ))
+                                                                                        ) : null}
+                                                                                    </div>
+                                                                                </div>
+                                                                            ))
+                                                                        ) : (
+                                                                            <>
+                                                                                {granules.map(g => (
+                                                                                    <div
+                                                                                        key={g.id}
+                                                                                        className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/40 transition-colors"
+                                                                                    >
+                                                                                        <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                                                                        <span className="text-xs text-foreground font-medium flex-1">
+                                                                                            {g.titre}
+                                                                                        </span>
+                                                                                    </div>
+                                                                                ))}
+                                                                                {granulesCount === 0 && (
+                                                                                    <p className="text-xs text-muted-foreground italic pl-3">Aucun contenu dans ce chapitre</p>
+                                                                                )}
+                                                                            </>
                                                                         )}
                                                                     </div>
                                                                 )}

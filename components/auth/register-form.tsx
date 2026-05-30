@@ -47,7 +47,32 @@ export function RegisterForm() {
       await register(formData)
       router.push("/dashboard")
     } catch (err: any) {
-      setError(err.message)
+      if (err?.name === "TimeoutError" || err?.name === "AbortError") {
+        setError("Le serveur démarre, cela peut prendre jusqu'à 60 secondes. Réessayez.")
+      } else if (
+        err?.message?.includes("Failed to fetch") ||
+        err?.message?.includes("NetworkError") ||
+        err?.message?.includes("fetch")
+      ) {
+        setError("Impossible de contacter le serveur. Vérifiez votre connexion et réessayez.")
+      } else {
+        // Nettoyer les erreurs Django de type {"email": ["..."]}
+        const raw = err.message || ""
+        try {
+          const parsed = JSON.parse(raw)
+          const messages = Object.entries(parsed)
+            .map(([field, msgs]: any) => {
+              const label: Record<string, string> = {
+                email: "Email", password: "Mot de passe", nom: "Nom", prenom: "Prénom", role: "Rôle"
+              }
+              return `${label[field] || field} : ${Array.isArray(msgs) ? msgs.join(", ") : msgs}`
+            })
+            .join(" | ")
+          setError(messages)
+        } catch {
+          setError(raw || "Erreur lors de l'inscription.")
+        }
+      }
     } finally {
       setLoading(false)
     }

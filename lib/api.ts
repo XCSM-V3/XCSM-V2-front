@@ -152,8 +152,10 @@ class API {
         ...headers,
         ...options.headers,
       },
-      // Timeout 15s — évite le spinner infini si Render est en cold start
-      signal: options.signal ?? AbortSignal.timeout(15000),
+      // Timeout : 60s pour le login (cold start Render ~50s), 15s pour le reste
+      signal: options.signal ?? AbortSignal.timeout(
+        endpoint === "/auth/login/" || endpoint === "/auth/register/" ? 60000 : 15000
+      ),
     }
 
     try {

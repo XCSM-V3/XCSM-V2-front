@@ -30,7 +30,9 @@ export function LoginForm() {
     } catch (err: any) {
       // Timeout AbortSignal → message lisible
       if (err?.name === "TimeoutError" || err?.name === "AbortError") {
-        setError("Le serveur met trop de temps à répondre. Réessayez dans quelques secondes.")
+        setError("Le serveur démarre, cela peut prendre jusqu'à 60 secondes. Réessayez.")
+      } else if (err?.message?.includes("Failed to fetch") || err?.message?.includes("NetworkError") || err?.message?.includes("fetch")) {
+        setError("Impossible de contacter le serveur. Vérifiez votre connexion ou réessayez dans quelques instants.")
       } else {
         setError(err.message)
       }

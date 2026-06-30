@@ -587,24 +587,67 @@ class API {
   // ==========================================================================
 
   /**
-   * Uploader un document (PDF ou DOCX)
+   * Uploader un document (PDF ou DOCX) avec suivi de progression
    */
   async uploadDocument(
     file: File,
-    titre: string
+    titre: string,
+    matiere_id?: string,
+    onProgress?: (progress: number) => void
   ): Promise<Document & { message: string; statut: string }> {
     const formData = new FormData()
     formData.append("fichier_original", file)
     formData.append("titre", titre)
+    if (matiere_id) {
+      formData.append("matiere", matiere_id)
+    }
 
-    return this.request<Document & { message: string; statut: string }>(
-      "/documents/upload/",
-      {
-        method: "POST",
-        body: formData,
-      },
-      true // isFormData = true
-    )
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      const url = `${API_BASE}/documents/upload/`;
+      
+      xhr.open("POST", url, true);
+      
+      const headers = this.getHeaders(true, true);
+      for (const key in headers) {
+        xhr.setRequestHeader(key, headers[key]);
+      }
+
+      if (onProgress && xhr.upload) {
+        xhr.upload.onprogress = (event) => {
+          if (event.lengthComputable) {
+            const percentComplete = Math.round((event.loaded / event.total) * 100);
+            onProgress(percentComplete);
+          }
+        };
+      }
+
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            resolve(JSON.parse(xhr.responseText));
+          } catch (e) {
+            resolve({} as any);
+          }
+        } else {
+          let errorMessage = `Erreur ${xhr.status}`;
+          try {
+            const json = JSON.parse(xhr.responseText);
+            errorMessage = json.detail || json.message || json.error || JSON.stringify(json);
+          } catch (e) {
+            // Ignore
+          }
+          if (xhr.status === 401) {
+            reject(new Error("Session expirée ou non autorisée. Veuillez vous reconnecter."));
+          } else {
+            reject(new Error(errorMessage));
+          }
+        }
+      };
+
+      xhr.onerror = () => reject(new Error("Erreur réseau lors de l'upload"));
+      xhr.send(formData);
+    });
   }
 
   /**

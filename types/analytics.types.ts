@@ -36,6 +36,7 @@ export interface GranuleMetric {
     ai_questions_count: number;
     difficulty_score: number;    // 0-100 : basé sur questions IA + temps
     completion_rate: number;     // % d'étudiants ayant fini ce granule
+    is_difficult_zone?: boolean; // Optionnel pour la rétrocompatibilité
 }
 
 export interface DashboardData {
@@ -105,6 +106,46 @@ export interface NavigationSuggestion {
     course_title: string;
     reason: "prerequisite" | "related_concept" | "difficulty_help" | "next_logical";
     match_score: number; // 0-100
+}
+
+export interface CourseAnalytics {
+    course_id: string;
+    course_title: string;
+    total_views: number;
+    unique_learners: number;
+    avg_completion_rate: number;
+    avg_session_duration: number;
+    total_ai_interactions: number;
+    difficult_zones: GranuleMetric[];
+    most_consulted: GranuleMetric[];
+    least_consulted: GranuleMetric[];
+    granule_metrics: GranuleMetric[];
+    alert_count: number;
+    period_days: number;
+}
+
+export interface PedagogicalAlert {
+    id: string;
+    type: "difficult_zone" | "low_completion" | "high_ai_demand" | "navigation_dropout";
+    severity: "info" | "warning" | "critical";
+    course_id: string;
+    course_title: string;
+    granule_id?: string;
+    granule_title?: string;
+    message: string;
+    detail: string;
+    percentage: number;        // Ex: 60% des étudiants ont demandé de l'aide
+    created_at: string;
+    is_read: boolean;
+}
+
+export interface DashboardState {
+    analytics: CourseAnalytics | null;
+    alerts: PedagogicalAlert[];
+    isLoading: boolean;
+    error: string | null;
+    selectedCourseId: string | null;
+    period: 7 | 14 | 30;
 }
 
 

@@ -376,10 +376,16 @@ export default function CourseDetailPage() {
 
                         <div className="flex flex-col justify-center items-start md:items-end gap-4">
                             {course.est_inscrit || course.est_proprietaire || isEnseignant ? (
-                                <Button size="lg" className="w-full md:w-auto" onClick={handleStartCourse}>
-                                    <PlayCircle className="mr-2 h-5 w-5" />
-                                    Ouvrir le cours
-                                </Button>
+                                <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+                                    <Button variant="outline" size="lg" className="w-full md:w-auto border-primary/20 text-primary hover:bg-primary/5" onClick={() => router.push(`/cours/${courseId}/apercu`)}>
+                                        <Eye className="mr-2 h-5 w-5" />
+                                        Aperçu intégral
+                                    </Button>
+                                    <Button size="lg" className="w-full md:w-auto" onClick={handleStartCourse}>
+                                        <PlayCircle className="mr-2 h-5 w-5" />
+                                        Ouvrir le cours
+                                    </Button>
+                                </div>
                             ) : (
                                 <AlertDialog>
                                     <AlertDialogTrigger asChild>

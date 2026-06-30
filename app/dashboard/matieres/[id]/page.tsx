@@ -34,6 +34,7 @@ export default function MatiereDetailPage() {
     const [uploadFile, setUploadFile] = useState<File | null>(null)
     const [uploadTitle, setUploadTitle] = useState("")
     const [isUploading, setIsUploading] = useState(false)
+    const [uploadProgress, setUploadProgress] = useState(0)
 
     // Co-teachers states
     const [isCoTeachersOpen, setIsCoTeachersOpen] = useState(false)
@@ -100,22 +101,15 @@ export default function MatiereDetailPage() {
     const handleUpload = async () => {
         if (!uploadFile) return
         setIsUploading(true)
+        setUploadProgress(0)
 
         try {
-            const formData = new FormData()
-            formData.append("fichier_original", uploadFile)
-            formData.append("titre", uploadTitle || uploadFile.name)
-            formData.append("matiere", params.id as string)
-
-            // Use api.uploadDocument wrapper directly if service fails, but service import is fixed now.
-            // documentsService logic uses api.uploadDocument which expects 2 args.
-            // Wait, documentsService.uploadDocument(file, titre) does NOT accept 'matiere' arg in my previous reading.
-            // I need to use the RAW API call here because 'uploadDocument' service method signature is rigid.
-
-            await api.request("/documents/upload/", {
-                method: "POST",
-                body: formData
-            }, true) // true = isFormData
+            await api.uploadDocument(
+                uploadFile,
+                uploadTitle || uploadFile.name,
+                params.id as string,
+                (progress) => setUploadProgress(progress)
+            )
 
             toast({ title: "Succès", description: "Document envoyé pour traitement." })
             setIsUploadOpen(false)
@@ -135,6 +129,7 @@ export default function MatiereDetailPage() {
             })
         } finally {
             setIsUploading(false)
+            setUploadProgress(0)
         }
     }
 
@@ -259,9 +254,14 @@ export default function MatiereDetailPage() {
                                         </div>
                                     </div>
                                     <div className="flex gap-2">
+                                        <Button variant="outline" size="sm" asChild className="border-primary/20 text-primary hover:bg-primary/5">
+                                            <Link href={`/cours/${c.id}/apercu`}>
+                                                <Eye className="mr-2 h-3.5 w-3.5" /> Aperçu
+                                            </Link>
+                                        </Button>
                                         <Button variant="secondary" size="sm" asChild>
                                             <Link href={`/cours/${c.id}`}>
-                                                <Eye className="mr-2 h-3 w-3" /> Ouvrir
+                                                <BookOpen className="mr-2 h-3.5 w-3.5" /> Ouvrir
                                             </Link>
                                         </Button>
                                     </div>
@@ -289,10 +289,18 @@ export default function MatiereDetailPage() {
                             <Input type="file" accept=".pdf,.docx,.txt" onChange={e => setUploadFile(e.target.files?.[0] || null)} />
                         </div>
                     </div>
-                    <DialogFooter>
+                    <DialogFooter className="flex-col items-stretch sm:flex-row sm:justify-end gap-2">
+                        {isUploading && uploadProgress > 0 && uploadProgress < 100 && (
+                            <div className="flex-1 mr-4 flex items-center">
+                                <div className="w-full bg-muted rounded-full h-2.5">
+                                    <div className="bg-primary h-2.5 rounded-full transition-all duration-300" style={{ width: `${uploadProgress}%` }}></div>
+                                </div>
+                                <span className="text-xs text-muted-foreground ml-2">{uploadProgress}%</span>
+                            </div>
+                        )}
                         <Button onClick={handleUpload} disabled={!uploadFile || isUploading}>
                             {isUploading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <UploadCloud className="h-4 w-4 mr-2" />}
-                            {isUploading ? "Traitement..." : "Uploader et Créer"}
+                            {isUploading ? (uploadProgress === 100 ? "Traitement backend..." : "Upload en cours...") : "Uploader et Créer"}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

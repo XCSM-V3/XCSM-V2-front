@@ -386,10 +386,16 @@ export default function CourseViewerPage() {
                             <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm bg-primary/10 text-primary">
                                 <BookOpen className="h-4 w-4" />
                             </div>
-                            <div className="min-w-0">
+                            <button 
+                                onClick={() => {
+                                    setActiveCollection({ title: structure.cours.titre, granules: flatGranules });
+                                    setSelectedGranuleId(null);
+                                }}
+                                className="min-w-0 text-left hover:opacity-80 transition-opacity"
+                            >
                                 <p className="text-foreground font-semibold text-xs leading-snug truncate">{structure.cours.titre}</p>
                                 <p className="text-muted-foreground text-xs truncate mt-0.5">{structure.cours.enseignant}</p>
-                            </div>
+                            </button>
                         </div>
                         <button onClick={() => setSidebarOpen(false)} className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors flex-shrink-0">
                             <X className="h-4 w-4" />
@@ -494,7 +500,12 @@ export default function CourseViewerPage() {
                         <div className="py-3 px-3 space-y-1">
                             {structure.parties.map((partie, pi) => (
                                 <div key={partie.id} className="mb-1">
-                                    <button onClick={() => toggle(partie.id)} className="w-full text-left px-3 py-2.5 rounded-xl flex items-center gap-3 hover:bg-muted/60 transition-colors group">
+                                    <button onClick={() => {
+                                        toggle(partie.id);
+                                        const partieGranules = partie.chapitres.flatMap(c => c.sections.flatMap(s => s.sous_sections.flatMap(ss => ss.granules)));
+                                        setActiveCollection({ title: partie.titre, granules: partieGranules });
+                                        setSelectedGranuleId(null);
+                                    }} className="w-full text-left px-3 py-2.5 rounded-xl flex items-center gap-3 hover:bg-muted/60 transition-colors group">
                                         <span className="text-xs font-bold w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0 bg-primary/10 text-primary">{pi + 1}</span>
                                         <span className="flex-1 text-foreground text-xs font-semibold uppercase tracking-wider truncate">{partie.titre}</span>
                                         <ChevronRight className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform duration-200", expanded.has(partie.id) && "rotate-90")} />
@@ -502,7 +513,12 @@ export default function CourseViewerPage() {
 
                                     {expanded.has(partie.id) && partie.chapitres.map(ch => (
                                         <div key={ch.id} className="ml-3 mt-1 relative before:absolute before:left-[11px] before:top-0 before:bottom-0 before:w-px before:bg-border">
-                                            <button onClick={() => toggle(ch.id)} className="w-full text-left pl-6 pr-3 py-2 rounded-lg flex items-center gap-2 hover:bg-muted/50 transition-colors group">
+                                            <button onClick={() => {
+                                                toggle(ch.id);
+                                                const chapterGranules = ch.sections.flatMap(s => s.sous_sections.flatMap(ss => ss.granules));
+                                                setActiveCollection({ title: ch.titre, granules: chapterGranules });
+                                                setSelectedGranuleId(null);
+                                            }} className="w-full text-left pl-6 pr-3 py-2 rounded-lg flex items-center gap-2 hover:bg-muted/50 transition-colors group">
                                                 <span className="text-[10px] font-bold text-muted-foreground uppercase flex-shrink-0 group-hover:text-primary transition-colors">Ch.{ch.numero}</span>
                                                 <span className="flex-1 text-foreground text-xs font-medium truncate">{ch.titre}</span>
                                                 <ChevronRight className={cn("h-3 w-3 text-muted-foreground transition-transform duration-200", expanded.has(ch.id) && "rotate-90")} />

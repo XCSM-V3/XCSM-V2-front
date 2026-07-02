@@ -1,15 +1,6 @@
 import type { Metadata } from "next"
-import { Inter } from "next/font/google"
-import "./globals.css"
-
-import { Providers } from "./providers"
-import { AuthProvider } from "@/contexts/auth-context"
-import { ThemeProvider } from "@/components/theme-provider"
-import { AIAgentProvider } from "@/contexts/AIAgentContext"
-import AIAgentModal from "@/components/ai/AIAgentModal"
-import AIAgentButton from "@/components/ai/AIAgentButton"
-
-const inter = Inter({ subsets: ["latin"] })
+// Police système - pas de téléchargement réseau nécessaire au build
+const inter = { className: "font-sans" }
 
 export const metadata: Metadata = {
   title: "Éditeur de Document pour Enseignants",

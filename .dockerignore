@@ -1,4 +1,4 @@
-node_modules
+# node_modules est volontairement inclus (npm install ne fonctionne pas sans internet dans Docker)
 npm-debug.log
 README.md
 .next

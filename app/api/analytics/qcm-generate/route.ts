@@ -16,7 +16,7 @@ const MODELS = [
     "gemini-2.5-flash-preview-04-17",  // 🧠 RAISONNEMENT - Dernier modèle avancé
     "gemini-2.0-flash",                 // ⚡ PUISSANT - Standard rapide
     "gemini-2.0-flash-lite",            // 🚀 RAPIDE - Version légère
-    "gemini-1.5-flash",                 // ✅ STABLE - Fallback sûr
+    "gemini-2.0-flash",                 // ✅ STABLE - Fallback sûr
 ];
 
 export async function POST(req: NextRequest) {

@@ -94,17 +94,30 @@ export default function AnalyticsDashboardPage() {
             try {
                 const courseContent = await api.getCourseContent(selectedCourseId);
                 const granules: { id: string; title: string; content: string }[] = [];
+                const pushGranule = (g: any) => {
+                    if (!g) return;
+                    granules.push({
+                        id: g.granule_id ?? g.id,
+                        title: g.titre ?? g.title ?? "Sans titre",
+                        content:
+                            g.contenu?.html_content ??
+                            g.contenu?.content ??
+                            (typeof g.content === "string" ? g.content : "") ??
+                            "",
+                    });
+                };
+                // Format API réel : sections[].chapters[].paragraphs[]
+                courseContent?.sections?.forEach((s: any) => {
+                    s.chapters?.forEach((c: any) => {
+                        c.paragraphs?.forEach(pushGranule);
+                    });
+                });
+                // Format alternatif : parties[].chapitres[].sections[].sous_sections[].granules[]
                 courseContent?.parties?.forEach((p: any) => {
                     p.chapitres?.forEach((c: any) => {
                         c.sections?.forEach((s: any) => {
                             s.sous_sections?.forEach((ss: any) => {
-                                ss.granules?.forEach((g: any) => {
-                                    granules.push({
-                                        id: g.id,
-                                        title: g.titre,
-                                        content: g.contenu?.html_content ?? g.contenu?.content ?? "",
-                                    });
-                                });
+                                ss.granules?.forEach(pushGranule);
                             });
                         });
                     });

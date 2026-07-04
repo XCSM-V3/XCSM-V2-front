@@ -15,7 +15,7 @@ const API_KEY = process.env.GEMINI_API_KEY ?? "";
 // gemini-2.5-flash-preview : RAISONNEMENT AVANCÉ + multimodal (gratuit avec limites)
 // gemini-2.0-flash : Standard puissant, très stable
 // gemini-2.0-flash-lite : Ultra rapide, coût minimal
-// gemini-1.5-flash : Fallback stable
+// gemini-2.0-flash : Fallback stable
 const MODELS = [
   "gemini-2.5-flash",          // ✅ Meilleur modèle gratuit (Mai 2026)
   "gemini-2.5-flash-lite",     // ✅ Version légère rapide
@@ -265,11 +265,12 @@ export async function POST(req: NextRequest) {
       const msg = err instanceof Error ? err.message : String(err);
       const isQuota = msg.includes("429") || msg.includes("quota") || msg.includes("ResourceExhausted");
       const isNotFound = msg.includes("404") || msg.includes("not found");
+      const isOverloaded = msg.includes("503") || msg.includes("overloaded") || msg.includes("UNAVAILABLE");
 
-      console.warn(`[XCSM AI] ⚠️ ${modelName} échoué: ${isQuota ? "QUOTA" : isNotFound ? "NOT_FOUND" : "ERROR"} - ${msg.slice(0, 100)}`);
+      console.warn(`[XCSM AI] ⚠️ ${modelName} échoué: ${isQuota ? "QUOTA" : isNotFound ? "NOT_FOUND" : isOverloaded ? "OVERLOADED" : "ERROR"} - ${msg.slice(0, 100)}`);
 
-      // Continue sur quota ou modèle non trouvé
-      if (isQuota || isNotFound) continue;
+      // Continue sur quota, modèle non trouvé ou modèle saturé (503)
+      if (isQuota || isNotFound || isOverloaded) continue;
 
       // Arrêt sur erreur critique (auth, network...)
       break;
@@ -385,7 +386,7 @@ export async function GET() {
 // // gemini-2.5-flash-preview : RAISONNEMENT AVANCÉ + multimodal (gratuit avec limites)
 // // gemini-2.0-flash : Standard puissant, très stable
 // // gemini-2.0-flash-lite : Ultra rapide, coût minimal
-// // gemini-1.5-flash : Fallback stable
+// // gemini-2.0-flash : Fallback stable
 // const MODELS = [
 
 //   "gemini-3-flash-preview",
@@ -394,7 +395,7 @@ export async function GET() {
 //   "gemini-2.5-flash-preview-04-17",  // 🧠 RAISONNEMENT - Dernier modèle avancé
 //   "gemini-2.0-flash",                 // ⚡ PUISSANT - Standard rapide
 //   "gemini-2.0-flash-lite",            // 🚀 RAPIDE - Version légère
-//   "gemini-1.5-flash",                 // ✅ STABLE - Fallback sûr
+//   "gemini-2.0-flash",                 // ✅ STABLE - Fallback sûr
 
 
 // ];
@@ -681,8 +682,8 @@ export async function GET() {
 //   "gemini-2.0-flash",
 //   "gemini-2.0-flash-lite",
 //   "gemini-2.5-flash-preview-04-17",
-//   "gemini-1.5-flash",
-//   "gemini-1.5-pro",
+//   "gemini-2.0-flash",
+//   "gemini-2.0-flash",
 // ];
 
 // // ── Prompt système XCSM ───────────────────────────────────────
@@ -1296,7 +1297,7 @@ export async function GET() {
 // //     }
 
 // //     const model = genAI.getGenerativeModel({
-// //       model: "gemini-1.5-flash",
+// //       model: "gemini-2.0-flash",
 // //       systemInstruction: SYSTEM_PROMPT + contextBlock(context),
 // //       safetySettings: [
 // //         { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
@@ -1361,5 +1362,5 @@ export async function GET() {
 // // }
 
 // // export async function GET() {
-// //   return Response.json({ status: "ok", model: "gemini-1.5-flash" });
+// //   return Response.json({ status: "ok", model: "gemini-2.0-flash" });
 // // }

@@ -14,13 +14,23 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog"
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { FileText, ArrowLeft, Eye, BookOpen, Calendar, Users, UploadCloud, Loader2, UserPlus, Trash2 } from "lucide-react"
 import Link from "next/link"
 import { useToast } from "@/components/ui/use-toast"
 import { useAuth } from "@/contexts/auth-context"
 import matiereService from "@/services/matiere-service"
 import documentsService from "@/services/documents-service"
-import { api } from "@/lib/api" // IMPORT DIRECT CORRECT
+import { api, Document } from "@/lib/api" // IMPORT DIRECT CORRECT
 
 export default function MatiereDetailPage() {
     const params = useParams()
@@ -30,10 +40,16 @@ export default function MatiereDetailPage() {
     const [cours, setCours] = useState<any[]>([])
     const [isLoading, setIsLoading] = useState(true)
 
+    const [documents, setDocuments] = useState<Document[]>([])
+    const [deletingDocId, setDeletingDocId] = useState<string | null>(null)
+    const [docToDelete, setDocToDelete] = useState<Document | null>(null)
+
     const [isUploadOpen, setIsUploadOpen] = useState(false)
     const [uploadFile, setUploadFile] = useState<File | null>(null)
     const [uploadTitle, setUploadTitle] = useState("")
     const [isUploading, setIsUploading] = useState(false)
+    const [uploadProgress, setUploadProgress] = useState(0)
+    const [processingDoc, setProcessingDoc] = useState<{ titre: string; status: string } | null>(null)
 
     // Co-teachers states
     const [isCoTeachersOpen, setIsCoTeachersOpen] = useState(false)
@@ -88,6 +104,17 @@ export default function MatiereDetailPage() {
                 setCours([]) // Fallback to empty array
             }
 
+            // 3. Documents uploadés pour cette matière (pour permettre leur suppression)
+            if (user?.role === "enseignant") {
+                try {
+                    const allDocs = await api.getDocuments()
+                    setDocuments(allDocs.filter(d => d.matiere === params.id))
+                } catch (e) {
+                    console.error("Erreur chargement documents:", e)
+                    setDocuments([])
+                }
+            }
+
         } catch (error) {
             console.error("Erreur matière:", error)
             toast({ title: "Erreur", description: "Matière introuvable", variant: "destructive" })
@@ -97,37 +124,76 @@ export default function MatiereDetailPage() {
         }
     }
 
+    // Le traitement (extraction + IA + génération du cours) tourne en arrière-plan
+    // côté worker Celery : on poll le document jusqu'à TRAITE/ERREUR au lieu de
+    // supposer qu'il est prêt après un délai fixe. onTick permet d'afficher un
+    // retour visuel continu pendant l'attente (bandeau + toast de transition),
+    // pour que l'utilisateur ne reste jamais sans nouvelle pendant le traitement.
+    const pollDocumentUntilDone = async (
+        documentId: string,
+        onTick: (status: string) => void,
+        { intervalMs = 2000, timeoutMs = 120000 } = {}
+    ) => {
+        const deadline = Date.now() + timeoutMs
+        while (Date.now() < deadline) {
+            try {
+                const doc = await api.getDocument(documentId)
+                onTick(doc.statut_traitement)
+                if (doc.statut_traitement === "TRAITE" || doc.statut_traitement === "ERREUR") {
+                    return doc.statut_traitement
+                }
+            } catch (e) {
+                console.warn("Erreur pendant le polling du document:", e)
+            }
+            await new Promise((resolve) => setTimeout(resolve, intervalMs))
+        }
+        return "TIMEOUT" as const
+    }
+
     const handleUpload = async () => {
         if (!uploadFile) return
         setIsUploading(true)
+        setUploadProgress(0)
+
+        const titreLabel = uploadTitle || uploadFile.name
 
         try {
-            const formData = new FormData()
-            formData.append("fichier_original", uploadFile)
-            formData.append("titre", uploadTitle || uploadFile.name)
-            formData.append("matiere", params.id as string)
+            const result = await api.uploadDocument(
+                uploadFile,
+                titreLabel,
+                params.id as string,
+                (progress) => setUploadProgress(progress)
+            )
 
-            // Use api.uploadDocument wrapper directly if service fails, but service import is fixed now.
-            // documentsService logic uses api.uploadDocument which expects 2 args.
-            // Wait, documentsService.uploadDocument(file, titre) does NOT accept 'matiere' arg in my previous reading.
-            // I need to use the RAW API call here because 'uploadDocument' service method signature is rigid.
-
-            await api.request("/documents/upload/", {
-                method: "POST",
-                body: formData
-            }, true) // true = isFormData
-
-            toast({ title: "Succès", description: "Document envoyé pour traitement." })
+            toast({ title: "Document envoyé", description: "Le traitement démarre en arrière-plan..." })
             setIsUploadOpen(false)
             setUploadFile(null)
             setUploadTitle("")
 
-            toast({ title: "Traitement en cours", description: "Le cours apparaîtra dans quelques instants." })
+            setProcessingDoc({ titre: titreLabel, status: result.statut ?? "EN_ATTENTE" })
 
-            // Refresh list after delay
-            setTimeout(fetchMatiereDetails, 2000)
+            let hasNotifiedStart = false
+            const finalStatus = await pollDocumentUntilDone(result.id, (status) => {
+                setProcessingDoc({ titre: titreLabel, status })
+                if (status === "EN_COURS" && !hasNotifiedStart) {
+                    hasNotifiedStart = true
+                    toast({ title: "Traitement en cours", description: `Analyse et découpage de "${titreLabel}"...` })
+                }
+            })
+
+            if (finalStatus === "TRAITE") {
+                toast({ title: "Découpage terminé ✅", description: "Le cours est prêt." })
+            } else if (finalStatus === "ERREUR") {
+                toast({ title: "Échec du traitement ❌", description: "Le document n'a pas pu être découpé.", variant: "destructive" })
+            } else {
+                toast({ title: "Traitement en cours", description: "Ça prend plus de temps que prévu, le cours apparaîtra dès que ce sera prêt." })
+            }
+
+            setProcessingDoc(null)
+            await fetchMatiereDetails()
 
         } catch (error: any) {
+            setProcessingDoc(null)
             toast({
                 title: "Erreur Upload",
                 description: error.response?.data?.error || error.message || "Echec de l'envoi",
@@ -135,6 +201,26 @@ export default function MatiereDetailPage() {
             })
         } finally {
             setIsUploading(false)
+            setUploadProgress(0)
+        }
+    }
+
+    const handleDeleteDocument = async (doc: Document) => {
+        setDocToDelete(null)
+        setDeletingDocId(doc.id)
+        try {
+            await api.deleteDocument(doc.id)
+            toast({ title: "Document supprimé", description: `"${doc.titre}" a été supprimé.` })
+            setDocuments(prev => prev.filter(d => d.id !== doc.id))
+            await fetchMatiereDetails()
+        } catch (error: any) {
+            toast({
+                title: "Erreur",
+                description: error.message || "Impossible de supprimer ce document",
+                variant: "destructive"
+            })
+        } finally {
+            setDeletingDocId(null)
         }
     }
 
@@ -229,6 +315,18 @@ export default function MatiereDetailPage() {
                         </div>
                     </div>
 
+                    {processingDoc && (
+                        <div className="mb-6 flex items-center gap-3 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 text-sm">
+                            <Loader2 className="h-4 w-4 animate-spin text-primary flex-shrink-0" />
+                            <span>
+                                Traitement de « {processingDoc.titre} » :{" "}
+                                {processingDoc.status === "EN_ATTENTE"
+                                    ? "en file d'attente..."
+                                    : "analyse et découpage en cours (ça peut prendre jusqu'à 1-2 min)..."}
+                            </span>
+                        </div>
+                    )}
+
                     <div className="border-t border-border my-8"></div>
 
                     <h2 className="text-2xl font-semibold mb-6 flex items-center">
@@ -244,29 +342,49 @@ export default function MatiereDetailPage() {
                         </div>
                     ) : (
                         <div className="grid gap-4">
-                            {Array.isArray(cours) && cours.map((c: any) => (
-                                <Card key={c.id} className="flex flex-row items-center p-4 hover:shadow-md transition-all gap-4">
-                                    <div className="bg-primary/10 p-3 rounded-lg flex-shrink-0">
-                                        <FileText className="h-6 w-6 text-primary" />
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <h3 className="font-semibold text-lg truncate">{c.titre}</h3>
-                                        <p className="text-sm text-muted-foreground line-clamp-1">{c.description}</p>
-                                        <div className="flex gap-3 mt-1 text-xs text-muted-foreground">
-                                            <span>{new Date(c.date_creation).toLocaleDateString()}</span>
-                                            <span>•</span>
-                                            <span>{c.nb_parties || 0} chapitres</span>
+                            {Array.isArray(cours) && cours.map((c: any) => {
+                                const sourceDoc = documents.find(d => d.course_id === c.id)
+                                return (
+                                    <Card key={c.id} className="flex flex-row items-center p-4 hover:shadow-md transition-all gap-4">
+                                        <div className="bg-primary/10 p-3 rounded-lg flex-shrink-0">
+                                            <FileText className="h-6 w-6 text-primary" />
                                         </div>
-                                    </div>
-                                    <div className="flex gap-2">
-                                        <Button variant="secondary" size="sm" asChild>
-                                            <Link href={`/cours/${c.id}`}>
-                                                <Eye className="mr-2 h-3 w-3" /> Ouvrir
-                                            </Link>
-                                        </Button>
-                                    </div>
-                                </Card>
-                            ))}
+                                        <div className="flex-1 min-w-0">
+                                            <h3 className="font-semibold text-lg truncate">{c.titre}</h3>
+                                            <p className="text-sm text-muted-foreground line-clamp-1">{c.description}</p>
+                                            <div className="flex gap-3 mt-1 text-xs text-muted-foreground">
+                                                <span>{new Date(c.date_creation).toLocaleDateString()}</span>
+                                                <span>•</span>
+                                                <span>{c.nb_parties || 0} chapitres</span>
+                                            </div>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <Button variant="outline" size="sm" asChild className="border-primary/20 text-primary hover:bg-primary/5">
+                                                <Link href={`/cours/${c.id}/apercu`}>
+                                                    <Eye className="mr-2 h-3.5 w-3.5" /> Aperçu
+                                                </Link>
+                                            </Button>
+                                            <Button variant="secondary" size="sm" asChild>
+                                                <Link href={`/cours/${c.id}`}>
+                                                    <BookOpen className="mr-2 h-3.5 w-3.5" /> Ouvrir
+                                                </Link>
+                                            </Button>
+                                            {user?.role === "enseignant" && sourceDoc && (
+                                                <Button
+                                                    variant="outline"
+                                                    size="icon"
+                                                    className="border-destructive/20 text-destructive hover:bg-destructive/10 flex-shrink-0"
+                                                    disabled={deletingDocId === sourceDoc.id}
+                                                    onClick={() => setDocToDelete(sourceDoc)}
+                                                    title="Supprimer ce document"
+                                                >
+                                                    {deletingDocId === sourceDoc.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                                                </Button>
+                                            )}
+                                        </div>
+                                    </Card>
+                                )
+                            })}
                         </div>
                     )}
                 </>
@@ -289,10 +407,18 @@ export default function MatiereDetailPage() {
                             <Input type="file" accept=".pdf,.docx,.txt" onChange={e => setUploadFile(e.target.files?.[0] || null)} />
                         </div>
                     </div>
-                    <DialogFooter>
+                    <DialogFooter className="flex-col items-stretch sm:flex-row sm:justify-end gap-2">
+                        {isUploading && uploadProgress > 0 && uploadProgress < 100 && (
+                            <div className="flex-1 mr-4 flex items-center">
+                                <div className="w-full bg-muted rounded-full h-2.5">
+                                    <div className="bg-primary h-2.5 rounded-full transition-all duration-300" style={{ width: `${uploadProgress}%` }}></div>
+                                </div>
+                                <span className="text-xs text-muted-foreground ml-2">{uploadProgress}%</span>
+                            </div>
+                        )}
                         <Button onClick={handleUpload} disabled={!uploadFile || isUploading}>
                             {isUploading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <UploadCloud className="h-4 w-4 mr-2" />}
-                            {isUploading ? "Traitement..." : "Uploader et Créer"}
+                            {isUploading ? (uploadProgress === 100 ? "Traitement backend..." : "Upload en cours...") : "Uploader et Créer"}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -435,6 +561,27 @@ export default function MatiereDetailPage() {
                     </div>
                 </DialogContent>
             </Dialog>
+
+            {/* Confirmation suppression document */}
+            <AlertDialog open={!!docToDelete} onOpenChange={(open) => !open && setDocToDelete(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Supprimer ce document ?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Cette action est irréversible. Le document « {docToDelete?.titre} », le cours généré et tous les granules associés seront définitivement supprimés.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Annuler</AlertDialogCancel>
+                        <AlertDialogAction
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            onClick={() => docToDelete && handleDeleteDocument(docToDelete)}
+                        >
+                            Supprimer
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     )
 }

@@ -245,39 +245,3 @@ export function useComments(granuleId: string, courseId: string) {
     };
 }
 
-// ── Hook notifications ────────────────────────
-export function useNotifications() {
-    const [notifications, setNotifications] = useState<any[]>([]);
-    const [unreadCount, setUnreadCount] = useState(0);
-
-    const load = useCallback(async () => {
-        try {
-            const res = await fetch("/api/notifications", {
-                headers: authHeaders(),
-            });
-            if (!res.ok) return;
-            const data = await res.json();
-            setNotifications(data.notifications ?? []);
-            setUnreadCount(data.unread_count ?? 0);
-        } catch {
-            // silencieux
-        }
-    }, []);
-
-    useEffect(() => {
-        load();
-        const interval = setInterval(load, 30000); // polling 30s
-        return () => clearInterval(interval);
-    }, [load]);
-
-    const markAllRead = useCallback(async () => {
-        await fetch("/api/notifications", {
-            method: "PATCH",
-            headers: authHeaders(),
-        });
-        setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
-        setUnreadCount(0);
-    }, []);
-
-    return { notifications, unreadCount, markAllRead, reload: load };
-}

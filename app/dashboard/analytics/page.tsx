@@ -40,7 +40,6 @@ export default function AnalyticsDashboardPage() {
     const [analytics, setAnalytics] = useState<CourseAnalytics | null>(null);
     const [alerts, setAlerts] = useState<PedagogicalAlert[]>([]);
     const [isLoading, setIsLoading] = useState(false);
-    const [isDemoMode, setIsDemoMode] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     // Granules du cours sélectionné (pour QCM et synthèse)
@@ -88,7 +87,6 @@ export default function AnalyticsDashboardPage() {
 
             setAnalytics(data.analytics);
             setAlerts(data.alerts ?? []);
-            setIsDemoMode(data.mode === "demo");
 
             // Charger les granules pour QCM/Synthèse
             try {
@@ -162,13 +160,6 @@ export default function AnalyticsDashboardPage() {
                                 {unreadAlerts.length} alerte{unreadAlerts.length > 1 ? "s" : ""}
                             </span>
                         </div>
-                    )}
-
-                    {/* Mode démo */}
-                    {isDemoMode && (
-                        <span className="text-xs px-2.5 py-1 bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 rounded-full border border-amber-200 dark:border-amber-800">
-                            Mode démo
-                        </span>
                     )}
 
                     {/* Rafraîchir */}

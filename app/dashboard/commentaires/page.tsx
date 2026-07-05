@@ -16,7 +16,6 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { TypeBadge, StatusBadge } from "@/components/comments/CommentBadge";
-import NotificationsBell from "@/components/comments/NotificationsBell";
 import type { Comment } from "@/types/comments.types";
 
 // ── Helpers ──────────────────────────────────────────────────
@@ -154,7 +153,6 @@ export default function TeacherCommentsDashboard() {
                     </p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <NotificationsBell />
                     <button
                         onClick={loadComments}
                         disabled={isLoading}

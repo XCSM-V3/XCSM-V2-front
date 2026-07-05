@@ -39,6 +39,7 @@ import {
 import { api, Course, Etudiant } from "@/lib/api"
 import { useAnalytics } from "@/hooks/useAnalytics" // --- AJOUT MODULE 3 ---
 import { useAuth } from "@/contexts/auth-context"
+import { GranuleSearchBar } from "@/components/search/granule-search-bar"
 import {
     Dialog,
     DialogContent,
@@ -170,6 +171,12 @@ export default function CourseDetailPage() {
     const [isContentLoading, setIsContentLoading] = useState(true)
     const [expandedChapters, setExpandedChapters] = useState<Set<string>>(new Set())
 
+    // Recherche de granules scopée à ce cours (backend: GET /granules/search/?cours_id=...)
+    const [granuleSearchResults, setGranuleSearchResults] = useState<Awaited<ReturnType<typeof api.searchGranules>>["results"] | null>(null)
+    const [isSearchingGranules, setIsSearchingGranules] = useState(false)
+    const [granuleSearchQuery, setGranuleSearchQuery] = useState("")
+    const [granuleSearchError, setGranuleSearchError] = useState<string | null>(null)
+
     useEffect(() => {
         if (!courseId) return
         setIsContentLoading(true)
@@ -219,6 +226,27 @@ export default function CourseDetailPage() {
     const getGranuleHtml = (g: Granule): string => {
         if (!g.contenu) return ""
         return g.contenu.html_content || g.contenu.html || g.contenu.content || ""
+    }
+
+    const handleGranuleSearch = async (query: string) => {
+        setGranuleSearchQuery(query)
+        setIsSearchingGranules(true)
+        setGranuleSearchError(null)
+        try {
+            const response = await api.searchGranules(query, { cours_id: courseId })
+            setGranuleSearchResults(response.results)
+        } catch (error: any) {
+            setGranuleSearchError(error.message || "Erreur lors de la recherche")
+            setGranuleSearchResults([])
+        } finally {
+            setIsSearchingGranules(false)
+        }
+    }
+
+    const clearGranuleSearch = () => {
+        setGranuleSearchQuery("")
+        setGranuleSearchResults(null)
+        setGranuleSearchError(null)
     }
 
     // ==========================================================================
@@ -376,10 +404,16 @@ export default function CourseDetailPage() {
 
                         <div className="flex flex-col justify-center items-start md:items-end gap-4">
                             {course.est_inscrit || course.est_proprietaire || isEnseignant ? (
-                                <Button size="lg" className="w-full md:w-auto" onClick={handleStartCourse}>
-                                    <PlayCircle className="mr-2 h-5 w-5" />
-                                    Ouvrir le cours
-                                </Button>
+                                <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+                                    <Button variant="outline" size="lg" className="w-full md:w-auto border-primary/20 text-primary hover:bg-primary/5" onClick={() => router.push(`/cours/${courseId}/apercu`)}>
+                                        <Eye className="mr-2 h-5 w-5" />
+                                        Aperçu intégral
+                                    </Button>
+                                    <Button size="lg" className="w-full md:w-auto" onClick={handleStartCourse}>
+                                        <PlayCircle className="mr-2 h-5 w-5" />
+                                        Ouvrir le cours
+                                    </Button>
+                                </div>
                             ) : (
                                 <AlertDialog>
                                     <AlertDialogTrigger asChild>
@@ -456,19 +490,29 @@ export default function CourseDetailPage() {
 
                                 <section>
                                     <h3 className="text-xl font-bold mb-4">Ce que vous allez apprendre</h3>
-                                    <div className="grid sm:grid-cols-2 gap-4">
-                                        {/* Exemples statiques d'objectifs, à rendre dynamiques plus tard */}
-                                        {[
-                                            "Comprendre les concepts fondamentaux",
-                                            "Appliquer la théorie à des cas pratiques",
-                                            "Utiliser les outils recommandés",
-                                            "Évaluer des solutions existantes"
-                                        ].map((obj, i) => (
-                                            <div key={i} className="flex items-start gap-3">
-                                                <CheckCircle className="h-5 w-5 text-green-500 shrink-0 mt-0.5" />
-                                                <span>{obj}</span>
-                                            </div>
-                                        ))}
+                                    <div className="flex flex-col gap-3">
+                                        {(structure
+                                            ? (structure as any).learningObjectives ?? []
+                                            : []
+                                        ).length > 0
+                                            ? ((structure as any).learningObjectives as string[]).map((obj: string, i: number) => (
+                                                <div key={i} className="flex items-start gap-3">
+                                                    <CheckCircle className="h-5 w-5 text-green-500 shrink-0 mt-0.5" />
+                                                    <span>{obj}</span>
+                                                </div>
+                                            ))
+                                            : [
+                                                "Comprendre les concepts fondamentaux",
+                                                "Appliquer la théorie à des cas pratiques",
+                                                "Utiliser les outils recommandés",
+                                                "Évaluer des solutions existantes",
+                                              ].map((obj, i) => (
+                                                <div key={i} className="flex items-start gap-3">
+                                                    <CheckCircle className="h-5 w-5 text-green-500 shrink-0 mt-0.5" />
+                                                    <span>{obj}</span>
+                                                </div>
+                                            ))
+                                        }
                                     </div>
                                 </section>
                             </div>
@@ -542,7 +586,48 @@ export default function CourseDetailPage() {
                                 )}
                             </CardHeader>
                             <CardContent>
-                                {isContentLoading ? (
+                                <div className="mb-6">
+                                    <GranuleSearchBar
+                                        onSearch={handleGranuleSearch}
+                                        isLoading={isSearchingGranules}
+                                        placeholder="Rechercher un granule dans ce cours..."
+                                    />
+                                    {granuleSearchResults !== null && (
+                                        <div className="mt-4 space-y-2">
+                                            <div className="flex items-center justify-between">
+                                                <p className="text-xs text-muted-foreground">
+                                                    {granuleSearchResults.length} résultat{granuleSearchResults.length > 1 ? "s" : ""} pour "{granuleSearchQuery}"
+                                                </p>
+                                                <Button variant="ghost" size="sm" onClick={clearGranuleSearch}>
+                                                    Effacer
+                                                </Button>
+                                            </div>
+                                            {granuleSearchError && (
+                                                <p className="text-sm text-destructive">{granuleSearchError}</p>
+                                            )}
+                                            {granuleSearchResults.map((g) => (
+                                                <button
+                                                    key={g.granule_id}
+                                                    onClick={() => router.push(`/cours/${courseId}/lecture?granule=${g.granule_id}`)}
+                                                    className="w-full text-left p-3 rounded-lg border border-border/60 hover:bg-muted/40 transition-colors"
+                                                >
+                                                    <p className="text-xs text-muted-foreground truncate mb-1">
+                                                        {g.chemin_hierarchique.partie} <ChevronRight className="inline h-3 w-3" /> {g.chemin_hierarchique.chapitre}
+                                                    </p>
+                                                    <p className="text-sm font-medium text-foreground">{g.titre}</p>
+                                                    {g.content_preview && (
+                                                        <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{g.content_preview}</p>
+                                                    )}
+                                                </button>
+                                            ))}
+                                            {granuleSearchResults.length === 0 && !granuleSearchError && (
+                                                <p className="text-sm text-muted-foreground text-center py-6">Aucun granule ne correspond à "{granuleSearchQuery}".</p>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {granuleSearchResults !== null ? null : isContentLoading ? (
                                     <div className="flex flex-col items-center justify-center py-12 gap-3">
                                         <Loader2 className="h-6 w-6 animate-spin text-primary" />
                                         <p className="text-sm text-muted-foreground">Chargement du programme...</p>
@@ -593,15 +678,16 @@ export default function CourseDetailPage() {
                                                                 {isExpanded && (
                                                                     <div className="border-t bg-muted/5 p-4 space-y-2">
                                                                         {granules.map(g => (
-                                                                            <div
+                                                                            <button
                                                                                 key={g.id}
-                                                                                className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/40 transition-colors"
+                                                                                onClick={() => router.push(`/cours/${courseId}/lecture?granule=${g.id}`)}
+                                                                                className="w-full flex items-center gap-3 p-2 rounded-md hover:bg-muted/40 transition-colors text-left"
                                                                             >
                                                                                 <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                                                                                 <span className="text-xs text-foreground font-medium flex-1">
                                                                                     {g.titre}
                                                                                 </span>
-                                                                            </div>
+                                                                            </button>
                                                                         ))}
                                                                         {granulesCount === 0 && (
                                                                             <p className="text-xs text-muted-foreground italic pl-3">Aucun contenu dans ce chapitre</p>

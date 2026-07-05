@@ -49,12 +49,27 @@ export interface Document {
   titre: string
   fichier_original?: string
   type_fichier: "PDF" | "DOCX"
-  statut_traitement: "EN_ATTENTE" | "TRAITE" | "ERREUR"
+  statut_traitement: "EN_ATTENTE" | "EN_COURS" | "TRAITE" | "ERREUR"
   date_upload: string
   enseignant?: string
   enseignant_nom?: string
   taille_fichier?: string
   mongo_transforme_id?: string
+  matiere?: string
+  course_id?: string | null
+}
+
+export interface Notification {
+  id: string
+  type: "new_comment" | "reply" | "upvote" | "suggestion_approved" | "suggestion_rejected" | "mention"
+      | "document_traite" | "document_erreur" | "co_teacher_added" | "co_teacher_removed"
+  title: string
+  message: string
+  link?: string | null
+  is_read: boolean
+  created_at: string
+  actor_name?: string | null
+  actor_role?: "enseignant" | "etudiant" | null
 }
 
 export interface Granule {
@@ -587,24 +602,67 @@ class API {
   // ==========================================================================
 
   /**
-   * Uploader un document (PDF ou DOCX)
+   * Uploader un document (PDF ou DOCX) avec suivi de progression
    */
   async uploadDocument(
     file: File,
-    titre: string
+    titre: string,
+    matiere_id?: string,
+    onProgress?: (progress: number) => void
   ): Promise<Document & { message: string; statut: string }> {
     const formData = new FormData()
     formData.append("fichier_original", file)
     formData.append("titre", titre)
+    if (matiere_id) {
+      formData.append("matiere", matiere_id)
+    }
 
-    return this.request<Document & { message: string; statut: string }>(
-      "/documents/upload/",
-      {
-        method: "POST",
-        body: formData,
-      },
-      true // isFormData = true
-    )
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      const url = `${API_BASE}/documents/upload/`;
+      
+      xhr.open("POST", url, true);
+      
+      const headers = this.getHeaders(true, true);
+      for (const key in headers) {
+        xhr.setRequestHeader(key, headers[key]);
+      }
+
+      if (onProgress && xhr.upload) {
+        xhr.upload.onprogress = (event) => {
+          if (event.lengthComputable) {
+            const percentComplete = Math.round((event.loaded / event.total) * 100);
+            onProgress(percentComplete);
+          }
+        };
+      }
+
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            resolve(JSON.parse(xhr.responseText));
+          } catch (e) {
+            resolve({} as any);
+          }
+        } else {
+          let errorMessage = `Erreur ${xhr.status}`;
+          try {
+            const json = JSON.parse(xhr.responseText);
+            errorMessage = json.detail || json.message || json.error || JSON.stringify(json);
+          } catch (e) {
+            // Ignore
+          }
+          if (xhr.status === 401) {
+            reject(new Error("Session expirée ou non autorisée. Veuillez vous reconnecter."));
+          } else {
+            reject(new Error(errorMessage));
+          }
+        }
+      };
+
+      xhr.onerror = () => reject(new Error("Erreur réseau lors de l'upload"));
+      xhr.send(formData);
+    });
   }
 
   /**
@@ -628,6 +686,25 @@ class API {
    */
   async getDocuments(): Promise<Document[]> {
     return this.request<Document[]>("/documents/")
+  }
+
+  /**
+   * Récupérer un document précis (utile pour poller son statut_traitement)
+   */
+  async getDocument(id: string): Promise<Document> {
+    return this.request<Document>(`/documents/${id}/`)
+  }
+
+  // ==========================================================================
+  // NOTIFICATIONS
+  // ==========================================================================
+
+  async getNotifications(): Promise<{ notifications: Notification[]; unread_count: number }> {
+    return this.request<{ notifications: Notification[]; unread_count: number }>(`/notifications/`)
+  }
+
+  async markAllNotificationsRead(): Promise<{ success: boolean; marked_read: number }> {
+    return this.request<{ success: boolean; marked_read: number }>(`/notifications/mark-all-read/`, { method: "PATCH" })
   }
 
   /**

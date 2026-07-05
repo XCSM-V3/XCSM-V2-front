@@ -1,56 +1,49 @@
 "use client";
 // ─────────────────────────────────────────────────────────────
-// XCSM V3 — Cloche Notifications (version complète)
+// XCSM V3 — Cloche Notifications
 // components/comments/NotificationsBell.tsx
 //
-// ← REMPLACE la version précédente
-// Gère les notifs enseignant ET étudiant
-// Envoie le rôle dans le header pour que l'API filtre correctement
+// Passe par lib/api.ts (comme le reste de l'app) au lieu de fetch()
+// bruts vers une route proxy Next.js avec fallback démo silencieux.
 // ─────────────────────────────────────────────────────────────
-
-"use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
     Bell, MessageSquare, ThumbsUp, CheckCircle, X,
-    Users, BookOpen, AlertTriangle,
+    Users, BookOpen, FileCheck, FileWarning, UserPlus, UserMinus,
 } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
+import { api, Notification } from "@/lib/api";
 import Link from "next/link";
 
-// ── Types locaux ─────────────────────────────────────────────
-interface Notification {
-    id: string;
-    type: string;
-    title: string;
-    message: string;
-    link?: string;
-    badge?: string;       // type du commentaire source
-    is_read: boolean;
-    created_at: string;
-    actor_name?: string;
-    actor_role?: string;  // "etudiant" | "enseignant"
-}
-
-// ── Icônes selon type ─────────────────────────────────────────
-function NotifIcon({ type, actorRole }: { type: string; actorRole?: string }) {
-    if (type === "peer_suggestion")
-        return <Users className="w-4 h-4 text-blue-500" />;
-    if (type === "new_student_comment")
-        return <MessageSquare className="w-4 h-4 text-primary" />;
-    if (type === "reply")
-        return <MessageSquare className="w-4 h-4 text-blue-500" />;
-    if (type === "suggestion_approved")
-        return <CheckCircle className="w-4 h-4 text-green-500" />;
-    if (type === "suggestion_rejected")
-        return <X className="w-4 h-4 text-destructive" />;
-    if (type === "upvote")
-        return <ThumbsUp className="w-4 h-4 text-amber-500" />;
-    return <Bell className="w-4 h-4 text-muted-foreground" />;
+// ── Icônes selon type (alignées sur les types réellement produits par le backend) ──
+function NotifIcon({ type }: { type: string }) {
+    switch (type) {
+        case "new_comment":
+            return <MessageSquare className="w-4 h-4 text-primary" />;
+        case "reply":
+            return <MessageSquare className="w-4 h-4 text-blue-500" />;
+        case "upvote":
+            return <ThumbsUp className="w-4 h-4 text-amber-500" />;
+        case "suggestion_approved":
+            return <CheckCircle className="w-4 h-4 text-green-500" />;
+        case "suggestion_rejected":
+            return <X className="w-4 h-4 text-destructive" />;
+        case "document_traite":
+            return <FileCheck className="w-4 h-4 text-green-500" />;
+        case "document_erreur":
+            return <FileWarning className="w-4 h-4 text-destructive" />;
+        case "co_teacher_added":
+            return <UserPlus className="w-4 h-4 text-blue-500" />;
+        case "co_teacher_removed":
+            return <UserMinus className="w-4 h-4 text-muted-foreground" />;
+        default:
+            return <Bell className="w-4 h-4 text-muted-foreground" />;
+    }
 }
 
 // ── Badge rôle auteur ─────────────────────────────────────────
-function ActorBadge({ role }: { role?: string }) {
+function ActorBadge({ role }: { role?: string | null }) {
     if (!role) return null;
     return role === "enseignant" ? (
         <span className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 font-medium">
@@ -72,43 +65,32 @@ function timeAgo(d: string) {
     return `${Math.floor(h / 24)}j`;
 }
 
-function getToken() {
-    if (typeof window === "undefined") return "";
-    return localStorage.getItem("access_token") ?? "";
-}
-
 // ── Composant principal ───────────────────────────────────────
 export default function NotificationsBell() {
     const { user } = useAuth();
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [unreadCount, setUnreadCount] = useState(0);
     const [open, setOpen] = useState(false);
+    const [isMarking, setIsMarking] = useState(false);
     const ref = useRef<HTMLDivElement>(null);
 
     const load = useCallback(async () => {
-        const token = getToken();
         try {
-            const res = await fetch("/api/notifications", {
-                headers: {
-                    "Content-Type": "application/json",
-                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-                    // Envoyer le rôle pour que l'API sache quelles notifs retourner
-                    ...(user?.role ? { "X-User-Role": user.role } : {}),
-                },
-            });
-            if (!res.ok) return;
-            const data = await res.json();
+            const data = await api.getNotifications();
             setNotifications(data.notifications ?? []);
             setUnreadCount(data.unread_count ?? 0);
-        } catch { /* silencieux */ }
-    }, [user?.role]);
+        } catch {
+            /* silencieux : le poll suivant réessaiera */
+        }
+    }, []);
 
     // Polling 30s
     useEffect(() => {
+        if (!user) return;
         load();
         const iv = setInterval(load, 30000);
         return () => clearInterval(iv);
-    }, [load]);
+    }, [load, user]);
 
     // Fermer au clic extérieur
     useEffect(() => {
@@ -119,19 +101,22 @@ export default function NotificationsBell() {
         return () => document.removeEventListener("mousedown", out);
     }, [open]);
 
-    const handleOpen = () => {
-        setOpen(v => !v);
-        if (!open && unreadCount > 0) {
-            setTimeout(async () => {
-                const token = getToken();
-                await fetch("/api/notifications", {
-                    method: "PATCH",
-                    headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-                });
-                setNotifications(p => p.map(n => ({ ...n, is_read: true })));
-                setUnreadCount(0);
-            }, 2000);
+    const handleMarkAllRead = async () => {
+        if (unreadCount === 0 || isMarking) return;
+        setIsMarking(true);
+        try {
+            await api.markAllNotificationsRead();
+            setNotifications(p => p.map(n => ({ ...n, is_read: true })));
+            setUnreadCount(0);
+        } catch {
+            // Échec réel (backend down/erreur) : on ne fait PAS croire que c'est marqué lu.
+        } finally {
+            setIsMarking(false);
         }
+    };
+
+    const handleToggle = () => {
+        setOpen(v => !v);
     };
 
     const isTeacher = user?.role === "enseignant" || user?.role === "admin";
@@ -140,7 +125,7 @@ export default function NotificationsBell() {
         <div ref={ref} className="relative">
             {/* ── Bouton cloche ── */}
             <button
-                onClick={handleOpen}
+                onClick={handleToggle}
                 aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount})` : ""}`}
                 className="relative p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
@@ -170,8 +155,9 @@ export default function NotificationsBell() {
                             )}
                             {unreadCount > 0 && (
                                 <button
-                                    onClick={handleOpen}
-                                    className="text-xs text-muted-foreground hover:underline"
+                                    onClick={handleMarkAllRead}
+                                    disabled={isMarking}
+                                    className="text-xs text-muted-foreground hover:underline disabled:opacity-50"
                                 >
                                     Tout lire
                                 </button>
@@ -194,7 +180,7 @@ export default function NotificationsBell() {
                                         }`}
                                 >
                                     <div className="flex-shrink-0 mt-0.5">
-                                        <NotifIcon type={notif.type} actorRole={notif.actor_role} />
+                                        <NotifIcon type={notif.type} />
                                     </div>
 
                                     <div className="flex-1 min-w-0">
@@ -214,14 +200,13 @@ export default function NotificationsBell() {
                                             {timeAgo(notif.created_at)}
                                         </p>
 
-                                        {/* Lien "Voir" pour enseignant */}
-                                        {isTeacher && notif.link && (
+                                        {notif.link && (
                                             <Link
                                                 href={notif.link}
                                                 onClick={() => setOpen(false)}
                                                 className="text-[11px] text-primary hover:underline mt-0.5 inline-block"
                                             >
-                                                Voir le commentaire →
+                                                Voir →
                                             </Link>
                                         )}
                                     </div>
@@ -238,161 +223,3 @@ export default function NotificationsBell() {
         </div>
     );
 }
-
-
-
-
-// "use client";
-// // ─────────────────────────────────────────────
-// // XCSM V3 — Cloche Notifications
-// // components/comments/NotificationsBell.tsx
-// //
-// // À ajouter dans le header de lecture/page.tsx
-// // ou dans components/ui/site-header.tsx
-// // ─────────────────────────────────────────────
-
-// import React, { useEffect, useRef, useState } from "react";
-// import { Bell, MessageSquare, ThumbsUp, CheckCircle, X } from "lucide-react";
-// import { useNotifications } from "@/hooks/useComments";
-
-// // ── Icônes par type de notification ──────────
-// const NOTIF_ICONS: Record<string, React.ReactNode> = {
-//     reply: <MessageSquare className="w-4 h-4 text-blue-500" />,
-//     new_comment: <MessageSquare className="w-4 h-4 text-primary" />,
-//     upvote: <ThumbsUp className="w-4 h-4 text-amber-500" />,
-//     suggestion_approved: <CheckCircle className="w-4 h-4 text-green-500" />,
-//     suggestion_rejected: <X className="w-4 h-4 text-destructive" />,
-//     mention: <Bell className="w-4 h-4 text-purple-500" />,
-// };
-
-// function timeAgo(dateStr: string): string {
-//     const diff = Date.now() - new Date(dateStr).getTime();
-//     const minutes = Math.floor(diff / 60000);
-//     if (minutes < 1) return "maintenant";
-//     if (minutes < 60) return `${minutes}min`;
-//     const hours = Math.floor(minutes / 60);
-//     if (hours < 24) return `${hours}h`;
-//     return `${Math.floor(hours / 24)}j`;
-// }
-
-// export default function NotificationsBell() {
-//     const { notifications, unreadCount, markAllRead } = useNotifications();
-//     const [open, setOpen] = useState(false);
-//     const containerRef = useRef<HTMLDivElement>(null);
-
-//     // Fermer au clic extérieur
-//     useEffect(() => {
-//         function handleOutsideClick(e: MouseEvent) {
-//             if (
-//                 containerRef.current &&
-//                 !containerRef.current.contains(e.target as Node)
-//             ) {
-//                 setOpen(false);
-//             }
-//         }
-//         if (open) {
-//             document.addEventListener("mousedown", handleOutsideClick);
-//         }
-//         return () => document.removeEventListener("mousedown", handleOutsideClick);
-//     }, [open]);
-
-//     // Marquer comme lus 2s après ouverture
-//     const handleOpen = () => {
-//         setOpen((prev) => !prev);
-//         if (!open && unreadCount > 0) {
-//             setTimeout(markAllRead, 2000);
-//         }
-//     };
-
-//     return (
-//         <div ref={containerRef} className="relative">
-//             {/* ── Bouton cloche ── */}
-//             <button
-//                 onClick={handleOpen}
-//                 aria-label={
-//                     unreadCount > 0
-//                         ? `Notifications (${unreadCount} non lues)`
-//                         : "Notifications"
-//                 }
-//                 className="relative p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-//             >
-//                 <Bell className="w-5 h-5" />
-//                 {unreadCount > 0 && (
-//                     <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full flex items-center justify-center leading-none">
-//                         {unreadCount > 9 ? "9+" : unreadCount}
-//                     </span>
-//                 )}
-//             </button>
-
-//             {/* ── Dropdown ── */}
-//             {open && (
-//                 <div className="absolute right-0 top-full mt-2 w-80 bg-background border border-border rounded-xl shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-//                     {/* Header dropdown */}
-//                     <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-//                         <h4 className="text-sm font-semibold text-foreground">
-//                             Notifications
-//                         </h4>
-//                         {unreadCount > 0 && (
-//                             <button
-//                                 onClick={markAllRead}
-//                                 className="text-xs text-primary hover:underline font-medium"
-//                             >
-//                                 Tout marquer lu
-//                             </button>
-//                         )}
-//                     </div>
-
-//                     {/* Liste notifications */}
-//                     <div className="max-h-80 overflow-y-auto divide-y divide-border">
-//                         {notifications.length === 0 ? (
-//                             <div className="flex flex-col items-center py-8 text-center px-4">
-//                                 <Bell className="w-8 h-8 text-muted-foreground/30 mb-2" />
-//                                 <p className="text-sm text-muted-foreground">
-//                                     Aucune notification
-//                                 </p>
-//                                 <p className="text-xs text-muted-foreground/70 mt-1">
-//                                     Vous serez notifié des réponses et activités
-//                                 </p>
-//                             </div>
-//                         ) : (
-//                             notifications.map((notif) => (
-//                                 <div
-//                                     key={notif.id}
-//                                     className={`flex items-start gap-3 px-4 py-3 transition-colors ${!notif.is_read ? "bg-primary/5" : "hover:bg-muted/50"
-//                                         }`}
-//                                 >
-//                                     {/* Icône */}
-//                                     <div className="flex-shrink-0 mt-0.5">
-//                                         {NOTIF_ICONS[notif.type] ?? (
-//                                             <Bell className="w-4 h-4 text-muted-foreground" />
-//                                         )}
-//                                     </div>
-
-//                                     {/* Contenu */}
-//                                     <div className="flex-1 min-w-0">
-//                                         <p
-//                                             className={`text-xs leading-snug ${!notif.is_read
-//                                                 ? "font-medium text-foreground"
-//                                                 : "text-foreground/80"
-//                                                 }`}
-//                                         >
-//                                             {notif.message}
-//                                         </p>
-//                                         <p className="text-[11px] text-muted-foreground mt-0.5">
-//                                             {timeAgo(notif.created_at)}
-//                                         </p>
-//                                     </div>
-
-//                                     {/* Indicateur non-lu */}
-//                                     {!notif.is_read && (
-//                                         <div className="w-2 h-2 rounded-full bg-primary flex-shrink-0 mt-1.5" />
-//                                     )}
-//                                 </div>
-//                             ))
-//                         )}
-//                     </div>
-//                 </div>
-//             )}
-//         </div>
-//     );
-// }

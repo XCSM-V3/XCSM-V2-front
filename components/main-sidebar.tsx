@@ -12,6 +12,7 @@ import { useSidebar } from "@/components/sidebar-provider"
 import { useAuth } from "@/contexts/auth-context"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
+import NotificationsBell from "@/components/comments/NotificationsBell"
 import {
   LayoutDashboard,
   Settings,
@@ -121,9 +122,12 @@ export function MainSidebar() {
       <div className="flex flex-col h-full">
 
         {/* Logo */}
-        <div className="p-4 border-b border-border">
-          <h2 className="text-xl font-bold text-primary">XCSM</h2>
-          <p className="text-sm text-muted-foreground">Plateforme d'édition</p>
+        <div className="p-4 border-b border-border flex items-start justify-between">
+          <div>
+            <h2 className="text-xl font-bold text-primary">XCSM</h2>
+            <p className="text-sm text-muted-foreground">Plateforme d'édition</p>
+          </div>
+          {isAuthenticated && <NotificationsBell />}
         </div>
 
         {/* Bouton Créer (enseignant) */}

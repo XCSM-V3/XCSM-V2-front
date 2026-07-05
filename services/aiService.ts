@@ -78,21 +78,40 @@ export async function* streamAIResponse(
 }
 
 // ── Prompts prédéfinis ────────────────────────────────────────
+
+/** Retire les balises HTML et décode les entités basiques pour donner du texte brut à l'IA. */
+function stripHtml(html: string): string {
+  return html
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&nbsp;/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export function buildQuickPrompt(
   type: "summarize" | "explain" | "suggest",
   context: GranuleContext | null
 ): string {
-  const target =
+  const title =
     context?.notionTitle ??
     context?.sectionTitle ??
     context?.chapterTitle ??
     context?.courseTitle ??
     "ce contenu";
 
+  // Extrait le texte brut du contenu si disponible (max 4000 chars pour éviter de dépasser le contexte)
+  const rawContent = context?.notionContent ? stripHtml(context.notionContent) : "";
+  const contentBlock = rawContent.length > 20
+    ? `\n\nVoici le contenu de cette notion :\n"""\n${rawContent.slice(0, 4000)}${rawContent.length > 4000 ? "\n[…]" : ""}\n"""`
+    : "";
+
   const prompts = {
-    summarize: `Génère un résumé clair et structuré de "${target}". Utilise des titres et des listes si c'est pertinent.`,
-    explain: `Explique "${target}" de façon simple et accessible, avec des exemples concrets, comme si je débutais.`,
-    suggest: `Quelles notions connexes devrais-je étudier après "${target}" pour approfondir ma compréhension ?`,
+    summarize: `Génère un résumé clair et structuré de la notion "${title}".${contentBlock}\n\nUtilise des titres (##) et des listes à puces si pertinent. Sois concis et pédagogique.`,
+    explain: `Explique la notion "${title}" de façon simple et accessible, avec des exemples concrets, comme si je débutais.${contentBlock}`,
+    suggest: `Après avoir étudié "${title}", quelles notions connexes devrais-je explorer pour approfondir ma compréhension ?${contentBlock ? `\n\nContexte de la notion :${contentBlock}` : ""}`,
   } as const;
 
   return prompts[type];

@@ -22,7 +22,7 @@ export function NotificationPoller() {
                 const processedIds = new Set<string>()
 
                 documents.forEach((doc) => {
-                    if (doc.statut_traitement === "EN_ATTENTE") {
+                    if (doc.statut_traitement === "EN_ATTENTE" || doc.statut_traitement === "EN_COURS") {
                         currentPendingIds.add(doc.id)
                         // Ajouter aux suivis si pas déjà présent
                         if (!pendingDocsRef.current.has(doc.id)) {

@@ -94,7 +94,18 @@ L'application sera disponible sur **http://localhost:3000**
 
 ## ⚙️ Configuration Environnement
 
-Créer `.env.local` à la racine (ne jamais committer ce fichier) :
+Créer `.env.local` à la racine (ne jamais committer ce fichier en clair) :
+
+### 💾 Sauvegarde et Restauration (.env.local)
+
+Pour éviter que votre clé API Gemini ne soit scannée sur le dépôt, le fichier `.env.local` a été encodé en Base64 et poussé sous le nom de `env_front_backup.txt`.
+
+Pour le restaurer après avoir cloné le dépôt :
+```bash
+base64 -d env_front_backup.txt > .env.local
+```
+
+### Template de base
 
 ```bash
 # ============================================
